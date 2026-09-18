@@ -51,5 +51,54 @@ class Tests(unittest.TestCase):
         self.assertEqual(tf.person("1990-05-17"), ("1990-05-17", (1990, 5, 17)))
 
 
+class BundledData(unittest.TestCase):
+    """Runs on the data shipped in ./data; the values were checked against the channel's own files."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.eu = tf.Channel()
+
+    def test_fortune(self):
+        r = self.eu.fortune((1990, 5, 17), (2026, 9, 18))
+        self.assertEqual((r["sign"], r["total"]), ("Taurus", 51))
+        self.assertEqual([t["points"] for t in r["topics"]], [6, 0, 16, 15, 14])
+        self.assertEqual([t["message_number"] for t in r["topics"]], [275, 556, 1018, 1296, 1800])
+        self.assertIsNone(r["topics"][0]["text"])  # message text is not bundled
+
+    def test_colour_and_languages(self):
+        self.assertEqual(self.eu.colour((1990, 5, 17), (2026, 9, 18)), (8, "Dark Green"))
+        self.assertEqual(tf.Channel(lang="de").colour((1990, 5, 17), (2026, 9, 18)), (8, "Dunkelgr\u00fcn"))
+
+    def test_hints(self):
+        h = self.eu.hints([(1990, 5, 17)], (2026, 9, 18))
+        self.assertEqual(h["food"], ["Seafood", "Spicy food", "Light"])
+        self.assertEqual(h["fun"], ["Video game", "Skill", "Throw"])
+        self.assertEqual(h["care"], ("Kitchen", "Moderately", "Housework"))
+
+    def test_compat(self):
+        pair = [(1990, 5, 17), (1988, 2, 3)]
+        self.assertEqual(self.eu.compat(pair, (2026, 9, 18)), 0)
+        self.assertEqual(self.eu.next_great_day(pair, (2026, 9, 18)), (2026, 9, 28))
+
+    def test_korea_and_japan_agree(self):
+        kr, jp = tf.Channel(release="kr"), tf.Channel(release="jp")
+        a, b = kr.fortune((1990, 5, 17), (2026, 9, 18)), jp.fortune((1990, 5, 17), (2026, 9, 18))
+        self.assertEqual((a["total"], b["total"]), (69, 69))
+        self.assertEqual(kr.colour((1990, 5, 17), (2026, 9, 18)), (9, "\uc5f0\ub450\uc0c9"))
+        self.assertEqual(jp.hints([(1990, 5, 17)], (2026, 9, 18))["care"][0], "\u808c")
+
+    def test_out_of_range(self):
+        with self.assertRaises(ValueError):
+            self.eu.fortune((1990, 5, 17), (2040, 1, 1))
+
+    def test_all_bands_load(self):
+        for band in tf.BANDS:
+            self.assertEqual(len(tf.Channel(band=band).eph.index), 56978)
+
+    def test_colour_row_packing_round_trips(self):
+        rows = [((2007, 1, 1), list(range(12))), ((2007, 1, 2), [22] * 12)]
+        self.assertEqual(tf.unpack_colour_rows(tf.pack_colour_rows(rows)), rows)
+
+
 if __name__ == "__main__":
     unittest.main()

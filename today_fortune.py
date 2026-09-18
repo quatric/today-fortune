@@ -1,23 +1,26 @@
 #!/usr/bin/env python3
 """Fortune maths of the Wii "Today & Tomorrow Channel" (Europe / Korea / Japan builds).
 
-Everything here was reconstructed from the shipped files and the decompiled main program.
-You need your own dump of the channel:
-  * the main program, LZ11-decompressed (content 0x01 in the EU/KR WADs, 0x0d in the JP one;
-    `today_fortune.py decompress IN OUT` does the LZ11 step)
-  * for EU/KR: the data archive (content 0x06) unpacked to a folder (needs logic/ text/ color/)
-  * for JP: nothing else, the data is embedded in the program
+Works out of the box with the data bundled in ./data (planetary positions, score and colour tables, hint tables and
+words). To also print the fortune *messages*, point it at your own dump of the channel:
+  --data <folder>   the unpacked data archive (content 0x06): EU and Korea
+  --dol <file>      the main program, LZ11-decompressed (`today_fortune.py decompress IN OUT`): Japan needs it for
+                    the text, and any release can be read straight from a dump instead of the bundle
 
-Examples (EU):
-  today_fortune.py --dol 00000001.app --data 00000006.d fortune Ann=1990-05-17 Bob=1988-02-03   # like the channel: today, or tomorrow from 17:00
-  today_fortune.py --dol 00000001.app --data 00000006.d fortune 1990-05-17 --when both
-  today_fortune.py --dol 00000001.app --data 00000006.d hints 1990-05-17 1988-02-03 --when tomorrow
-  today_fortune.py --dol 00000001.app --data 00000006.d compat 1990-05-17 1988-02-03 --day 2026-09-18 --json
-Korea / Japan: add --release kr|jp (band I is used automatically).
+Examples:
+  today_fortune.py fortune Ann=1990-05-17 Bob=1988-02-03      # like the channel: today, or tomorrow from 17:00
+  today_fortune.py fortune 1990-05-17 --when both              # today and tomorrow
+  today_fortune.py hints 1990-05-17 1988-02-03 --when tomorrow
+  today_fortune.py compat 1990-05-17 1988-02-03 --day 2026-09-18 --json
+  today_fortune.py --release jp --lang en fortune 1990-05-17    # Korea / Japan: --release kr|jp
+  today_fortune.py --data 00000006.d fortune 1990-05-17          # with message text from a dump
 """
 import argparse
 import datetime
 import functools
+import gzip
+import json
+import os
 import re
 import struct
 import sys
@@ -25,15 +28,16 @@ import sys
 TOPICS = ("love", "work", "study", "communications", "money")
 ZODIAC = ("Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo", "Libra", "Scorpio", "Sagittarius",
           "Capricorn", "Aquarius", "Pisces")
-# Natal ephemeris field used per topic: Venus, Saturn, Mercury, Moon@0h, Jupiter, (Sun = topic 5).
+# Natal ephemeris field used per topic: Venus, Saturn, Mercury, Moon@0h, Jupiter, (Sun = topic 5, unused).
 NATAL_FIELD = (1, 3, 4, 2, 5, 0)
 DAY_FIELD = 7  # the day's Moon at about noon
-FIELD_NAMES = ("Sun", "Venus", "Moon@0h", "Saturn", "Mercury", "Jupiter", "Mars", "Moon@12h", "-")
 LANGS = {"en": 1, "de": 2, "fr": 3, "es": 4, "it": 5, "nl": 6}
+BANDS = "ABIKMZ"  # UTC+1, +2, +9, +10, +12, 0
+DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
 
 
 # --------------------------------------------------------------------------------------------
-# small helpers
+# helpers
 
 def lz11(src):
     """Nintendo LZ11 decompression (how the WAD stores the main program)."""
@@ -125,43 +129,178 @@ class Ephemeris:
         return out
 
 
+def unpack_colour_rows(blob):
+    """12-byte rows: u16 year, u8 month, u8 day, then 2 x (six 5-bit colour indices + 2 pad bits)."""
+    rows = []
+    for i in range(0, len(blob) - 11, 12):
+        y, m, d = struct.unpack(">HBB", blob[i:i + 4])
+        w1, w2 = struct.unpack(">II", blob[i + 4:i + 12])
+        rows.append(((y, m, d), [(w >> (27 - 5 * k)) & 31 for w in (w1, w2) for k in range(6)]))
+    return rows
+
+
+def pack_colour_rows(rows):
+    out = bytearray()
+    for (y, m, d), cols in rows:
+        w = [sum(c << (27 - 5 * k) for k, c in enumerate(cols[h * 6:h * 6 + 6])) for h in range(2)]
+        out += struct.pack(">HBBII", y, m, d, *w)
+    return bytes(out)
+
+
 # --------------------------------------------------------------------------------------------
-# per-release addresses (virtual addresses inside the decompressed program)
+# data sources: the bundled ./data folder, or a dump of the channel
 
-EU_STR = {1: 0x8030CE70, 2: 0x8030F42C, 3: 0x8030DB04, 4: 0x803100C0, 5: 0x8030E798, 6: 0x80310D54}
-EU_CARE = {1: 0x8027E260, 2: 0x8027FBB0, 3: 0x8027EAD0, 4: 0x80280420, 5: 0x8027F340, 6: 0x80280C90}
+class BundleSource:
+    """Data shipped in ./data (see data/README.md)."""
 
-RELEASES = {
-    "eu": dict(band="A", scores=(0x802C6710, 28, 0x2760), colour_names=460),
-    "kr": dict(band="I", scores=(0x802D7738, 28, 0x2760), colour_names=450, colour_table=0x80270C10,
-               strtab=0x802EECE0, meal_ids=0x802B9220, meal_n=58, meal_a=0x802B95E0, meal_b=0x802B9A18,
-               play_tab=0x802B9E50, play_ids=0x802B94E4, play_n=62, care_rows=0x802BA288,
-               care_ids=0x802B9440, care_n=40, level=0x802B9418),
-    "jp": dict(band="I", scores=(0x8036C448, 20, 0x1C20), colour_table=0x80376D08, eph=0x80260E70,
-               meal_words=0x803C16B8, meal_n=53, meal_a=0x803C1860, meal_b=0x803C1C98,
-               play_tab=0x803C2A98, play_words=0x803E39F4, play_n=56, care_rows=0x803C2178,
-               care_words=0x803E3950, care_n=32, level=0x803E3900),
-}
+    def __init__(self, release, lang, path=DATA_DIR, messages=None):
+        self.rel, self.lang, self.path, self.messages = release, lang, path, messages
+
+    def _gz(self, rel):
+        with gzip.open(os.path.join(self.path, rel)) as f:
+            return f.read()
+
+    @functools.cached_property
+    def _hints(self):
+        with open(os.path.join(self.path, "hints.json"), encoding="utf-8") as f:
+            return json.load(f)[self.rel]
+
+    def ephemeris(self, band):
+        return Ephemeris(self._gz(f"ephemeris/{band}.bin.gz"))
+
+    def scores(self):
+        blob = open(os.path.join(self.path, "scores.bin"), "rb").read()
+        return [list(blob[t * 360:(t + 1) * 360]) for t in range(6)]
+
+    def colour_rows(self, band):
+        return unpack_colour_rows(self._gz(f"colours/{band}.bin.gz"))
+
+    def _words(self):
+        w = self._hints["words"]
+        return w[self.lang] if self.rel == "eu" else w
+
+    def colour_name(self, idx):
+        names = self._words().get("colours")
+        return names[idx] if names else None
+
+    def hint_tables(self):
+        h, w = self._hints, self._words()
+        t = dict(h["tables"], **{k: w[k] for k in ("meal", "play", "care", "level")})
+        t["care_rows"] = h["care_rows"][self.lang] if self.rel == "eu" else h["care_rows"]
+        return t
+
+    def message(self, topic, idx):
+        """Message text only comes from a dump (it is not bundled)."""
+        return self.messages.message(topic, idx) if self.messages else None
 
 
-class Channel:
-    def __init__(self, dol, data=None, release="eu", band=None, lang="en"):
-        self.rel, self.cfg = release, RELEASES[release]
-        self.dol = Dol(dol)
-        self.data_dir = data
-        self.band = band or self.cfg["band"]
-        self.lang = lang
-        if "eph" in self.cfg:  # Japan: ephemeris is embedded (56,978 records x 16 bytes)
-            self.eph = Ephemeris(self.dol.raw(self.cfg["eph"], 56978 * 16))
-        else:
-            self.eph = Ephemeris(self._read(f"logic/wii_ephemeris_decimal_{self.band}.bin"))
-        base, stride, tstride = self.cfg["scores"]
-        self.scores = [[self.dol.u8(base + t * tstride + i * stride + 2) for i in range(360)] for t in range(6)]
+class DumpSource:
+    """Reads a dump of the channel: the decompressed main program plus, for EU/Korea, the data archive."""
+
+    EU_STR = {1: 0x8030CE70, 2: 0x8030F42C, 3: 0x8030DB04, 4: 0x803100C0, 5: 0x8030E798, 6: 0x80310D54}
+    EU_CARE = {1: 0x8027E260, 2: 0x8027FBB0, 3: 0x8027EAD0, 4: 0x80280420, 5: 0x8027F340, 6: 0x80280C90}
+    CFG = {
+        "eu": dict(scores=(0x802C6710, 28, 0x2760), colour_names=460),
+        "kr": dict(scores=(0x802D7738, 28, 0x2760), colour_names=450, colour_table=0x80270C10,
+                   strtab=0x802EECE0, meal_ids=0x802B9220, meal_n=58, meal_a=0x802B95E0, meal_b=0x802B9A18,
+                   play_tab=0x802B9E50, play_ids=0x802B94E4, play_n=63, care_rows=0x802BA288,
+                   care_ids=0x802B9440, care_n=40, level=0x802B9418),
+        "jp": dict(scores=(0x8036C448, 20, 0x1C20), colour_table=0x80376D08, eph=0x80260E70,
+                   meal_words=0x803C16B8, meal_n=53, meal_a=0x803C1860, meal_b=0x803C1C98,
+                   play_tab=0x803C2A98, play_words=0x803E39F4, play_n=63, care_rows=0x803C2178,
+                   care_words=0x803E3950, care_n=32, level=0x803E3900),
+    }
+
+    def __init__(self, dol, data, release, lang):
+        self.rel, self.lang, self.data_dir = release, lang, data
+        self.cfg = self.CFG[release]
+        self.dol = Dol(dol) if dol else None  # without a DOL only the EU/Korean message text can be read
 
     def _read(self, rel):
         if not self.data_dir:
             raise SystemExit("--data <folder with logic/ text/ color/> is required for this release")
         return open(f"{self.data_dir}/{rel}", "rb").read()
+
+    def ephemeris(self, band):
+        if "eph" in self.cfg:
+            return Ephemeris(self.dol.raw(self.cfg["eph"], 56978 * 16))
+        return Ephemeris(self._read(f"logic/wii_ephemeris_decimal_{band}.bin"))
+
+    def scores(self):
+        base, stride, tstride = self.cfg["scores"]
+        return [[self.dol.u8(base + t * tstride + i * stride + 2) for i in range(360)] for t in range(6)]
+
+    def colour_rows(self, band):
+        if "colour_table" in self.cfg:
+            return unpack_colour_rows(self.dol.raw(self.cfg["colour_table"], 16071 * 12))
+        rows = []
+        for line in self._read(f"color/wii_color_japanese_{band}.txt").decode("cp932").split("\r\n")[1:]:
+            m = re.match(r"(\d+)\D+(\d+)\D+(\d+)\D+,(.*)", line)
+            if m:
+                rows.append(((int(m[1]), int(m[2]), int(m[3])), [int(x) for x in m[4].split(",")]))
+        return rows
+
+    def _eu_string(self, sid):
+        return self.dol.text(self.dol.u32(self.EU_STR[LANGS[self.lang]] + 4 * sid), "utf16")
+
+    def colour_name(self, idx):
+        if self.rel == "eu":
+            return self._eu_string(self.cfg["colour_names"] + idx)
+        if self.rel == "kr":
+            return self.dol.text(self.dol.u32(self.cfg["strtab"] + 4 * (self.cfg["colour_names"] + idx)), "utf16")
+        return None
+
+    def hint_tables(self):
+        c, d = self.cfg, self.dol
+        if self.rel == "eu":
+            st = self._eu_string
+            words = dict(meal=[st(d.u32(0x8027D1F8 + 8 * n)) for n in range(59)],
+                         play=[st(d.u32(0x8027D4B8 + 4 * n)) for n in range(64)],
+                         care=[st(d.u32(0x8027D418 + 4 * n)) for n in range(41)],
+                         level=[st(d.u32(0x8027D3C8 + 4 * n)) for n in range(10)])
+            va = dict(meal_a=0x8027D5B8, meal_b=0x8027D9F0, play_tab=0x8027DE28, care_rows=self.EU_CARE[LANGS[self.lang]])
+        elif self.rel == "kr":
+            st = lambda sid: d.text(d.u32(c["strtab"] + 4 * sid), "utf16") if sid else ""  # id 0 = empty slot
+            words = dict(meal=[st(d.u32(c["meal_ids"] + 8 * n)) for n in range(c["meal_n"])],
+                         play=[st(d.u32(c["play_ids"] + 4 * n)) for n in range(c["play_n"])],
+                         care=[st(d.u32(c["care_ids"] + 4 * n)) for n in range(c["care_n"])],
+                         level=[st(d.u32(c["level"] + 4 * n)) for n in range(10)])
+            va = {k: c[k] for k in ("meal_a", "meal_b", "play_tab", "care_rows")}
+        else:
+            sj = lambda a: d.text(a, "sjis")
+            words = dict(meal=[sj(d.u32(c["meal_words"] + 8 * n)) for n in range(c["meal_n"])],
+                         play=[sj(d.u32(c["play_words"] + 4 * n)) for n in range(c["play_n"])],
+                         care=[sj(d.u32(c["care_words"] + 4 * n)) for n in range(c["care_n"])],
+                         level=[sj(d.u32(c["level"] + 4 * n)) for n in range(10)])
+            va = {k: c[k] for k in ("meal_a", "meal_b", "play_tab", "care_rows")}
+        tri = lambda a: [[d.u8(a + i * 3 + k) for k in range(3)] for i in range(360)]
+        return dict(words, meal_a=tri(va["meal_a"]), meal_b=tri(va["meal_b"]), play_tab=tri(va["play_tab"]),
+                    care_rows=[[d.u8(va["care_rows"] + i * 6 + j) for j in range(6)] for i in range(360)])
+
+    def message(self, topic, idx):
+        if self.rel == "jp":  # original text is embedded as up to four Shift-JIS lines per entry
+            base, stride, tstride = self.cfg["scores"]
+            entry = base + topic * tstride + idx * stride
+            return "".join(self.dol.text(self.dol.u32(entry + 4 + 4 * k), "sjis") for k in range(4))
+        f = "kr" if self.rel == "kr" else self.lang
+        text = self._read(f"text/fortune_{f}.txt").decode("utf-16").lstrip("﻿").split("\r")
+        return text[topic * 360 + idx].replace("\t", " ")
+
+
+# --------------------------------------------------------------------------------------------
+
+class Channel:
+    """Fortune, colour, hints and compatibility. Uses the bundled data unless `dol` is given."""
+
+    def __init__(self, dol=None, data=None, release="eu", band=None, lang="en", bundle=DATA_DIR):
+        self.rel, self.lang = release, lang
+        self.band = band or ("A" if release == "eu" else "I")
+        if dol:
+            self.src = DumpSource(dol, data, release, lang)
+        else:  # bundled data, plus message text from a data archive if one is given
+            self.src = BundleSource(release, lang, bundle, DumpSource(None, data, release, lang) if data else None)
+        self.eph = self.src.ephemeris(self.band)
+        self.scores = self.src.scores()
 
     # ----- fortune ---------------------------------------------------------------------------
     @staticmethod
@@ -185,15 +324,6 @@ class Channel:
     def raw_scores(self, birth, day):
         return [self.scores[t][self.position(birth, day, t)] for t in range(5)]
 
-    def message(self, topic, idx):
-        if self.rel == "jp":  # original text is embedded as up to four Shift-JIS lines per entry
-            base, stride, tstride = self.cfg["scores"]
-            entry = base + topic * tstride + idx * stride
-            return "".join(self.dol.text(self.dol.u32(entry + 4 + 4 * k), "sjis") for k in range(4))
-        f = "kr" if self.rel == "kr" else self.lang
-        text = self._read(f"text/fortune_{f}.txt").decode("utf-16").lstrip("﻿").split("\r")
-        return text[topic * 360 + idx].replace("\t", " ")
-
     def fortune(self, birth, day):
         flags = self.day_flags(*day)
         topics, total, stars = [], 0, []
@@ -204,7 +334,8 @@ class Channel:
                 score = {13: 6, 12: 4, 11: 2, 10: 0}.get(score, score)
             stars.append(self.stars(score))
             total += score
-            topics.append(dict(topic=TOPICS[t], index=idx, points=score, stars=stars[-1], text=self.message(t, idx)))
+            topics.append(dict(topic=TOPICS[t], index=idx, message_number=t * 360 + idx + 1, points=score,
+                               stars=stars[-1], text=self.src.message(t, idx)))
         total = max(0, min(100, total))
         if flags[5]:  # ~30% of dates: bonus for a strong day; a perfect 100 needs four 5-star topics
             if total > 79:
@@ -217,20 +348,7 @@ class Channel:
     # ----- lucky colour ----------------------------------------------------------------------
     @functools.cached_property
     def _colour_rows(self):
-        if "colour_table" in self.cfg:  # KR/JP: 16,071 embedded rows of u16 y, u8 m, u8 d, 12 x 5 bits
-            rows = []
-            for i in range(16071):
-                o = self.cfg["colour_table"] + 12 * i
-                y, m, d = struct.unpack(">HBB", self.dol.raw(o, 4))
-                w1, w2 = self.dol.u32(o + 4), self.dol.u32(o + 8)
-                rows.append(((y, m, d), [(w >> (27 - 5 * k)) & 31 for w in (w1, w2) for k in range(6)]))
-            return rows
-        rows = []
-        for line in self._read(f"color/wii_color_japanese_{self.band}.txt").decode("cp932").split("\r\n")[1:]:
-            m = re.match(r"(\d+)\D+(\d+)\D+(\d+)\D+,(.*)", line)
-            if m:
-                rows.append(((int(m[1]), int(m[2]), int(m[3])), [int(x) for x in m[4].split(",")]))
-        return rows
+        return self.src.colour_rows(self.band)
 
     def colour(self, birth, day):
         """Lucky colour index (0-22) and, where known, its name."""
@@ -238,16 +356,7 @@ class Channel:
         rows = self._colour_rows
         by_date = dict(rows)
         row = by_date[day] if 2007 <= day[0] <= 2036 else rows[(day[2] + (day[0] << day[1])) % 16071][1]
-        idx = row[sign]
-        name = None
-        if self.rel == "eu":
-            name = self._eu_string(self.cfg["colour_names"] + idx)
-        elif self.rel == "kr":
-            name = self.dol.text(self.dol.u32(self.cfg["strtab"] + 4 * (self.cfg["colour_names"] + idx)), "utf16")
-        return idx, name
-
-    def _eu_string(self, sid):
-        return self.dol.text(self.dol.u32(EU_STR[LANGS[self.lang]] + 4 * sid), "utf16")
+        return row[sign], self.src.colour_name(row[sign])
 
     # ----- compatibility ---------------------------------------------------------------------
     SPREAD = {2: (0.5, 1.0), 3: (1.0, 2.0), 4: (1.5, 2.5), 5: (2.0, 3.0), 6: (2.5, 3.0)}
@@ -279,46 +388,20 @@ class Channel:
     # ----- food / fun / care hints -------------------------------------------------------------
     @functools.cached_property
     def _hint_tables(self):
-        c, d = self.cfg, self.dol
-        if self.rel == "eu":
-            st = self._eu_string
-            care_rows = EU_CARE[LANGS[self.lang]]
-            return dict(
-                meal=[st(d.u32(0x8027D1F8 + 8 * n)) for n in range(59)],
-                play=[st(d.u32(0x8027D4B8 + 4 * n)) for n in range(64)],
-                care=[st(d.u32(0x8027D418 + 4 * n)) for n in range(41)],
-                level=[st(d.u32(0x8027D3C8 + 4 * n)) for n in range(10)],
-                meal_a=0x8027D5B8, meal_b=0x8027D9F0, play_tab=0x8027DE28, care_rows=care_rows)
-        keys = ("meal_a", "meal_b", "play_tab", "care_rows")
-        if self.rel == "kr":
-            st = lambda sid: d.text(d.u32(c["strtab"] + 4 * sid), "utf16")
-            return dict(
-                meal=[st(d.u32(c["meal_ids"] + 8 * n)) for n in range(c["meal_n"])],
-                play=[st(d.u32(c["play_ids"] + 4 * n)) for n in range(c["play_n"])],
-                care=[st(d.u32(c["care_ids"] + 4 * n)) for n in range(c["care_n"])],
-                level=[st(d.u32(c["level"] + 4 * n)) for n in range(10)], **{k: c[k] for k in keys})
-        sj = lambda va: d.text(va, "sjis")
-        return dict(
-            meal=[sj(d.u32(c["meal_words"] + 8 * n)) for n in range(c["meal_n"])],
-            play=[sj(d.u32(c["play_words"] + 4 * n)) for n in range(c["play_n"])],
-            care=[sj(d.u32(c["care_words"] + 4 * n)) for n in range(c["care_n"])],
-            level=[sj(d.u32(c["level"] + 4 * n)) for n in range(10)], **{k: c[k] for k in keys})
+        return self.src.hint_tables()
 
     def hints(self, births, day):
         """Three food words, three fun words and (place, intensity, chore) for a group of 1-6 people."""
-        t, d = self._hint_tables, self.dol
+        t = self._hint_tables
         moon = self.eph.fields(*day)[2]  # the day's Moon at midnight
         sums = [sum(self.eph.fields(*b)[k] for b in births) for k in range(7)]  # Sun Venus Moon Saturn Mercury Jupiter Mars
         idx = lambda pos: 359 if pos % 360 == 0 else pos % 360 - 1
         meal_tab = t["meal_a"] if (sums[6] + moon) % 360 < 180 else t["meal_b"]
-        i = idx(moon + sums[0])
-        food = [t["meal"][d.u8(meal_tab + i * 3 + k)] for k in range(3)]
-        i = idx(moon + sums[2])
-        fun = [t["play"][d.u8(t["play_tab"] + i * 3 + k)] for k in range(3)]
+        food = [w for w in (t["meal"][x] for x in meal_tab[idx(moon + sums[0])]) if w]  # a few slots are empty
+        fun = [w for w in (t["play"][x] for x in t["play_tab"][idx(moon + sums[2])]) if w]
         per = [self.raw_scores(b, day) for b in births]
         love, comms = sum(x[0] for x in per), sum(x[3] for x in per)
-        i = idx(moon + sums[1 if love < comms else 2])
-        row = [d.u8(t["care_rows"] + i * 6 + j) for j in range(6)]
+        row = t["care_rows"][idx(moon + sums[1 if love < comms else 2])]
         item = row[2 + (sums[5] + moon) % 3]
         work, study = sum(x[1] for x in per), sum(x[2] for x in per)
         if work == study:
@@ -366,11 +449,11 @@ def days_for(when, explicit=None, now=None):
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    ap.add_argument("--dol", help="decompressed main program")
-    ap.add_argument("--data", help="unpacked data archive (content 0x06); not needed for --release jp")
-    ap.add_argument("--release", choices=RELEASES, default="eu")
-    ap.add_argument("--band", help="EU ephemeris band A/B/K/M/Z (default A); KR/JP always use I")
-    ap.add_argument("--lang", choices=LANGS, default="en", help="EU language")
+    ap.add_argument("--dol", help="read everything from this decompressed main program instead of the bundle")
+    ap.add_argument("--data", help="unpacked data archive (content 0x06); adds the message text for EU and Korea")
+    ap.add_argument("--release", choices=("eu", "kr", "jp"), default="eu")
+    ap.add_argument("--band", choices=list(BANDS), help="ephemeris band (default A for eu, I for kr/jp)")
+    ap.add_argument("--lang", choices=LANGS, default="en", help="EU language for colour names and hints")
     when = argparse.ArgumentParser(add_help=False)
     when.add_argument("--when", choices=("auto", "today", "tomorrow", "both"), default="auto",
                       help="auto = the channel's rule: today before 17:00, tomorrow from 17:00 (default)")
@@ -392,12 +475,10 @@ def main(argv=None):
     if a.cmd == "decompress":
         open(a.dst, "wb").write(lz11(open(a.src, "rb").read()))
         return 0
-    if not a.dol:
-        ap.error("--dol is required")
-    ch = Channel(a.dol, a.data, a.release, a.band, a.lang)
-    days = days_for(a.when, a.day)
-    out = []
     try:
+        ch = Channel(a.dol, a.data, a.release, a.band, a.lang)
+        days = days_for(a.when, a.day)
+        out = []
         for label, day in days:
             stamp = "%04d-%02d-%02d" % day
             if a.cmd in ("fortune", "colour"):
@@ -417,18 +498,19 @@ def main(argv=None):
                 out.append(dict(day=stamp, when=label, people=[n for n, _ in a.people],
                                 rating=("normal", "good", "very good")[rating],
                                 next_very_good_day=None if rating == 2 else _fmt(ch.next_great_day(births, day))))
-    except ValueError as e:
+    except (ValueError, OSError) as e:
         raise SystemExit(f"error: {e}")
-    if getattr(a, "json", False):
-        import json
+    if a.json:
         print(json.dumps(out, ensure_ascii=False, indent=2))
         return 0
     for e in out:
         head = f"{e['when']} {e['day']}"
         if a.cmd == "fortune":
-            print(f"== {e['person']}  ({e['sign']}, {head})  total {e['total']}/100  lucky colour: {e['colour'][1] or e['colour'][0]}")
+            colour = e["colour"][1] or f"colour {e['colour'][0]}"
+            print(f"== {e['person']}  ({e['sign']}, {head})  total {e['total']}/100  lucky colour: {colour}")
             for t in e["topics"]:
-                print(f"   {t['topic']:15s} {t['points']:2d} pts {'*' * t['stars']:5s} {t['text'][:96]}")
+                text = t["text"][:96] if t["text"] else f"message #{t['message_number']} (pass --data or --dol for the text)"
+                print(f"   {t['topic']:15s} {t['points']:2d} pts {'*' * t['stars']:5s} {text}")
         elif a.cmd == "colour":
             print(f"{e['person']} ({head}): {e['colour'][1] or e['colour'][0]}")
         elif a.cmd == "hints":
