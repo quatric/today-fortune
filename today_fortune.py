@@ -2,7 +2,7 @@
 """Fortune maths of the Wii "Today & Tomorrow Channel" (Europe / Korea / Japan builds).
 
 Works out of the box with the data bundled in ./data (planetary positions, score and colour tables, hint tables and
-words). To also print the fortune *messages*, point it at your own dump of the channel:
+words, and the fortune messages in ./data/text). You can also read a dump of the channel instead:
   --data <folder>   the unpacked data archive (content 0x06): EU and Korea
   --dol <file>      the main program, LZ11-decompressed (`today_fortune.py decompress IN OUT`): Japan needs it for
                     the text, and any release can be read straight from a dump instead of the bundle
@@ -13,7 +13,7 @@ Examples:
   today_fortune.py hints 1990-05-17 1988-02-03 --when tomorrow
   today_fortune.py compat 1990-05-17 1988-02-03 --day 2026-09-18 --json
   today_fortune.py --release jp --lang en fortune 1990-05-17    # Korea / Japan: --release kr|jp
-  today_fortune.py --data 00000006.d fortune 1990-05-17          # with message text from a dump
+  today_fortune.py --data 00000006.d fortune 1990-05-17          # message text read from your own dump
 """
 import argparse
 import datetime
@@ -189,9 +189,20 @@ class BundleSource:
         t["care_rows"] = h["care_rows"][self.lang] if self.rel == "eu" else h["care_rows"]
         return t
 
+    @functools.cached_property
+    def _text(self):
+        name = self.lang if self.rel == "eu" else self.rel
+        path = os.path.join(self.path, "text", f"{name}.txt.gz")
+        if not os.path.exists(path):
+            return None
+        with gzip.open(path) as f:
+            return f.read().decode("utf-8").split("\n")
+
     def message(self, topic, idx):
-        """Message text only comes from a dump (it is not bundled)."""
-        return self.messages.message(topic, idx) if self.messages else None
+        """Message text from a dump if one was given, else from data/text (None if that folder was removed)."""
+        if self.messages:
+            return self.messages.message(topic, idx)
+        return self._text[topic * 360 + idx] if self._text else None
 
 
 class DumpSource:
@@ -281,10 +292,14 @@ class DumpSource:
         if self.rel == "jp":  # original text is embedded as up to four Shift-JIS lines per entry
             base, stride, tstride = self.cfg["scores"]
             entry = base + topic * tstride + idx * stride
-            return "".join(self.dol.text(self.dol.u32(entry + 4 + 4 * k), "sjis") for k in range(4))
+            return "".join(self.dol.text(self.dol.u32(entry + 4 + 4 * k), "sjis") for k in range(4)).strip()
         f = "kr" if self.rel == "kr" else self.lang
-        text = self._read(f"text/fortune_{f}.txt").decode("utf-16").lstrip("﻿").split("\r")
-        return text[topic * 360 + idx].replace("\t", " ")
+        text = self._read(f"text/fortune_{f}.txt").decode("utf-16").lstrip("\ufeff").split("\r")
+        return text[topic * 360 + idx].replace("\t", " ").strip()
+
+    def all_messages(self):
+        """The 1,800 messages in order: topic 0-4 x 360 positions."""
+        return [self.message(t, i) for t in range(5) for i in range(360)]
 
 
 # --------------------------------------------------------------------------------------------
@@ -450,7 +465,7 @@ def days_for(when, explicit=None, now=None):
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--dol", help="read everything from this decompressed main program instead of the bundle")
-    ap.add_argument("--data", help="unpacked data archive (content 0x06); adds the message text for EU and Korea")
+    ap.add_argument("--data", help="unpacked data archive (content 0x06): read the EU/Korean message text from it")
     ap.add_argument("--release", choices=("eu", "kr", "jp"), default="eu")
     ap.add_argument("--band", choices=list(BANDS), help="ephemeris band (default A for eu, I for kr/jp)")
     ap.add_argument("--lang", choices=LANGS, default="en", help="EU language for colour names and hints")
@@ -509,7 +524,7 @@ def main(argv=None):
             colour = e["colour"][1] or f"colour {e['colour'][0]}"
             print(f"== {e['person']}  ({e['sign']}, {head})  total {e['total']}/100  lucky colour: {colour}")
             for t in e["topics"]:
-                text = t["text"][:96] if t["text"] else f"message #{t['message_number']} (pass --data or --dol for the text)"
+                text = t["text"][:96] if t["text"] else f"message #{t['message_number']} (data/text is missing, or pass --data / --dol)"
                 print(f"   {t['topic']:15s} {t['points']:2d} pts {'*' * t['stars']:5s} {text}")
         elif a.cmd == "colour":
             print(f"{e['person']} ({head}): {e['colour'][1] or e['colour'][0]}")

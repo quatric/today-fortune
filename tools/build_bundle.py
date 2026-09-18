@@ -4,8 +4,8 @@
   python3 tools/build_bundle.py --eu-dol eu_main.dol --eu-data eu_00000006.d \\
       --kr-dol kr_main.dol --kr-data kr_00000006.d --jp-dol jp_main.dol --out data
 
-The main programs must be LZ11-decompressed (`today_fortune.py decompress IN OUT`). Nothing that is not listed in
-data/README.md is written, in particular no fortune message text.
+The main programs must be LZ11-decompressed (`today_fortune.py decompress IN OUT`). Only what data/README.md lists is
+written. Use --no-text to leave out data/text (the fortune messages).
 """
 import argparse
 import gzip
@@ -31,6 +31,7 @@ def main():
     for k in ("eu-dol", "eu-data", "kr-dol", "kr-data", "jp-dol"):
         ap.add_argument("--" + k, required=True)
     ap.add_argument("--out", default="data")
+    ap.add_argument("--no-text", action="store_true", help="do not write the fortune messages")
     a = ap.parse_args()
     eu = {lang: tf.DumpSource(a.eu_dol, a.eu_data, "eu", lang) for lang in tf.LANGS}
     kr = tf.DumpSource(a.kr_dol, a.kr_data, "kr", "en")
@@ -51,6 +52,13 @@ def main():
     scores = eu["en"].scores()
     assert scores == kr.scores() == jp.scores(), "score tables differ between builds"
     open(f"{a.out}/scores.bin", "wb").write(bytes(b for t in scores for b in t))
+
+    # the fortune messages, one per line (1,800 per file, topic 0-4 x 360 positions), UTF-8
+    if not a.no_text:
+        for name, src in [(lang, eu[lang]) for lang in tf.LANGS] + [("kr", kr), ("jp", jp)]:
+            msgs = src.all_messages()
+            assert len(msgs) == 1800 and not any("\n" in m or "\r" in m for m in msgs)
+            gz(f"{a.out}/text/{name}.txt.gz", "\n".join(msgs).encode("utf-8"))
 
     # hint tables, hint words and colour names
     def hints(src, colours):

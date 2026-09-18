@@ -4,8 +4,8 @@ A reimplementation of the fortune maths of the Wii **Today & Tomorrow Channel** 
 Give it birth dates and it prints what the channel would show: the five-topic fortune with total points, the lucky
 colour, food / fun / care hints, and compatibility for a group, for today, tomorrow, or any date from 1881 to 2036.
 
-It runs with the data bundled in [`data/`](data/README.md), so no dump of the channel is needed. Python 3.8 or newer,
-no dependencies.
+It runs with the data bundled in [`data/`](data/README.md) (planetary positions, tables, hint words and the fortune
+messages), so no dump of the channel is needed. Python 3.8 or newer, no dependencies.
 
 ## Usage
 
@@ -31,21 +31,16 @@ python3 today_fortune.py --lang de hints 1990-05-17             # German words (
 | `--when auto\|today\|tomorrow\|both` | `auto` follows the channel: today before 17:00, tomorrow from 17:00 |
 | `--day YYYY-MM-DD` | an explicit date instead of `--when` |
 | `--json` | JSON output |
-| `--data DIR` | your unpacked data archive (content `00000006.app`, EU and Korea): adds the fortune message text |
-| `--dol FILE` | your decompressed main program: reads everything from the dump instead of the bundle, and adds the Japanese message text |
+| `--data DIR` | read the EU or Korean message text from your own unpacked data archive (content `00000006.app`) instead of the bundle |
+| `--dol FILE` | read everything from your own decompressed main program instead of the bundle |
 
 People are `YYYY-MM-DD` or `NAME=YYYY-MM-DD`.
 
 ## Messages
 
-The 1,800 fortune messages are not bundled, so without a dump each topic shows its message number instead. To see the
-text, pass your own files:
-
-| Release | Main program | Data archive |
-|---|---|---|
-| Europe (HAVP) | not needed | content `00000006.app`, unpacked with any U8 tool to a folder with `text/` |
-| Korea (HAVK) | not needed | same |
-| Japan (HAVJ) | content `0000000d.app`, LZ11-decompressed with `today_fortune.py decompress IN OUT` | not needed |
+The 1,800 fortune messages of each build are bundled in `data/text/` (English, German, French, Spanish, Italian, Dutch,
+Korean and the original Japanese). Delete that folder if you do not want them: the tool then prints the message number
+of each topic instead of the text.
 
 ## How it works
 

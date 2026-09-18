@@ -63,7 +63,7 @@ class BundledData(unittest.TestCase):
         self.assertEqual((r["sign"], r["total"]), ("Taurus", 51))
         self.assertEqual([t["points"] for t in r["topics"]], [6, 0, 16, 15, 14])
         self.assertEqual([t["message_number"] for t in r["topics"]], [275, 556, 1018, 1296, 1800])
-        self.assertIsNone(r["topics"][0]["text"])  # message text is not bundled
+        self.assertTrue(r["topics"][0]["text"].startswith("You may well do something you regret"))
 
     def test_colour_and_languages(self):
         self.assertEqual(self.eu.colour((1990, 5, 17), (2026, 9, 18)), (8, "Dark Green"))
@@ -90,6 +90,13 @@ class BundledData(unittest.TestCase):
     def test_out_of_range(self):
         with self.assertRaises(ValueError):
             self.eu.fortune((1990, 5, 17), (2040, 1, 1))
+
+    def test_every_message_is_bundled(self):
+        for rel, lang in (("eu", "en"), ("eu", "de"), ("eu", "nl"), ("kr", "en"), ("jp", "en")):
+            ch = tf.Channel(release=rel, lang=lang)
+            msgs = [ch.src.message(t, i) for t in range(5) for i in range(360)]
+            self.assertEqual(len(msgs), 1800)
+            self.assertTrue(all(msgs), (rel, lang))
 
     def test_all_bands_load(self):
         for band in tf.BANDS:
