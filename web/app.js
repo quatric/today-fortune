@@ -1,5 +1,6 @@
 import { ZODIAC } from "./engine.js";
 import { loadChannel, browserIo } from "./data.js";
+import { EDITION_NAME, BAND_NAME, detectBand, detectEdition } from "./locale.js";
 
 const io = browserIo(new URL("../data/", import.meta.url));
 const $ = (s, r = document) => r.querySelector(s);
@@ -22,16 +23,12 @@ const store = {
   get(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } },
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* private mode */ } },
 };
-function guessBand() {
-  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
-  if (/^Europe\/(Paris|Madrid|Amsterdam|Brussels|Luxembourg|Lisbon|London|Dublin)$/.test(tz)) return "Z";
-  if (/^Europe\/(Helsinki|Athens)$/.test(tz)) return "B";
-  if (/^Australia\//.test(tz)) return "K";
-  if (/^Pacific\/Auckland$/.test(tz)) return "M";
-  const off = -new Date(new Date().getFullYear(), 0, 1).getTimezoneOffset() / 60;
-  return { 0: "Z", 1: "A", 2: "B", 10: "K", 12: "M" }[off] || "A";
-}
-const defaults = { people: [{ name: "", birth: "" }], mode: "auto", date: "", edition: "en", band: guessBand() };
+const detected = { edition: detectEdition(), band: detectBand(), tz: Intl.DateTimeFormat().resolvedOptions().timeZone || "" };
+const effective = () => {
+  const edition = state.edition === "auto" ? detected.edition : state.edition;
+  return { edition, band: state.band === "auto" ? detected.band : state.band };
+};
+const defaults = { people: [{ name: "", birth: "" }], mode: "auto", date: "", edition: "auto", band: "auto" };
 const saved = store.get("tt-state", {});
 const state = { ...defaults, ...saved, people: Array.isArray(saved.people) && saved.people.length ? saved.people.slice(0, 6) : defaults.people };
 const save = () => store.set("tt-state", state);
@@ -72,7 +69,11 @@ function drawControls() {
   $("#date").value = state.date;
   $("#edition").value = state.edition;
   $("#band").value = state.band;
-  $("#band-wrap").hidden = state.edition === "kr" || state.edition === "jp";
+  const eff = effective();
+  $("#band-wrap").hidden = eff.edition === "kr" || eff.edition === "jp";
+  $("#edition").options[0].textContent = `Automatic (${EDITION_NAME[detected.edition]})`;
+  $("#band").options[0].textContent = `Automatic (${BAND_NAME[detected.band]})`;
+  $("#detected").textContent = `Detected from your device: ${EDITION_NAME[detected.edition]}${detected.tz ? `, ${detected.tz}` : ""}. Choose a different edition or zone above to override.`;
   $("#when-note").textContent = { auto: "Opens on today's fortune before 17:00 and on tomorrow's from 17:00, as the channel did.",
     today: "The date is your device's date.", tomorrow: "Tomorrow, from your device's date.", date: "Any date from 1881 to 2036." }[state.mode];
 }
@@ -103,8 +104,9 @@ const scheduleRefresh = () => { clearTimeout(timer); timer = setTimeout(refresh,
 // --- rendering ------------------------------------------------------------------------------------
 const channels = new Map();
 function getChannel() {
-  const release = state.edition === "kr" || state.edition === "jp" ? state.edition : "eu";
-  const opts = { release, lang: release === "eu" ? state.edition : "en", band: release === "eu" ? state.band : "I" };
+  const eff = effective();
+  const release = eff.edition === "kr" || eff.edition === "jp" ? eff.edition : "eu";
+  const opts = { release, lang: release === "eu" ? eff.edition : "en", band: release === "eu" ? eff.band : "I" };
   const key = JSON.stringify(opts);
   if (!channels.has(key)) channels.set(key, loadChannel(io, opts));
   return channels.get(key);
@@ -214,3 +216,40 @@ async function refresh() {
 }
 
 drawPeople(); drawControls(); refresh();
+
+// --- background music (off by default; the browser only allows sound after a click) ------------------
+const music = (() => {
+  const btn = $("#music"), label = $(".music-label", btn), URL_ = new URL("assets/bgm.mp3", import.meta.url);
+  let ctx, gain, source, buffer, on = false, wanted = store.get("tt-music", false);
+  const show = () => { btn.setAttribute("aria-pressed", String(on)); label.textContent = on ? "Music on" : "Music off"; };
+  async function start() {
+    on = true; show(); store.set("tt-music", true);
+    try {
+      ctx = ctx || new (window.AudioContext || window.webkitAudioContext)();
+      gain = gain || Object.assign(ctx.createGain(), {}); gain.connect(ctx.destination);
+      if (ctx.state === "suspended") await ctx.resume();
+      buffer = buffer || await fetch(URL_).then((r) => r.arrayBuffer()).then((b) => ctx.decodeAudioData(b));
+      if (!on) return;
+      source = ctx.createBufferSource(); source.buffer = buffer; source.loop = true; source.connect(gain); // looping buffer: no gap
+      gain.gain.cancelScheduledValues(ctx.currentTime); gain.gain.setValueAtTime(0, ctx.currentTime); gain.gain.linearRampToValueAtTime(0.35, ctx.currentTime + 1.2);
+      source.start();
+    } catch (e) { on = false; show(); btn.title = "Music could not be played on this device"; }
+  }
+  function stop() {
+    on = false; show(); store.set("tt-music", false);
+    if (!source) return;
+    const s = source; source = null;
+    gain.gain.cancelScheduledValues(ctx.currentTime); gain.gain.setValueAtTime(gain.gain.value, ctx.currentTime); gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.4);
+    setTimeout(() => { try { s.stop(); } catch { /* already stopped */ } }, 450);
+  }
+  btn.addEventListener("click", (e) => { wanted = false; on ? stop() : start(); });
+  document.addEventListener("visibilitychange", () => { if (ctx && on) document.hidden ? ctx.suspend() : ctx.resume(); });
+  // If music was on last visit, resume it on the first click or key press (browsers block sound before that).
+  if (wanted) {
+    btn.title = "Music will resume when you click anywhere";
+    const resume = (e) => { if (wanted && !btn.contains(e.target)) start(); wanted = false; removeEventListener("pointerdown", resume); removeEventListener("keydown", resume); };
+    addEventListener("pointerdown", resume); addEventListener("keydown", resume);
+  }
+  show();
+  return { get on() { return on; } };
+})();

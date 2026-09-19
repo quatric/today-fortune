@@ -40,9 +40,9 @@ a:hover { color: #ffe08a; }
 :focus-visible { outline: 3px solid var(--teal); outline-offset: 2px; border-radius: 6px; }
 
 .hero { text-align: center; padding: 56px 20px 24px; max-width: 760px; margin: 0 auto; }
-.eyebrow { text-transform: uppercase; letter-spacing: .22em; font-size: 12px; color: var(--gold); margin: 0 0 8px; }
-h1 { font: 700 clamp(38px, 8vw, 64px)/1.05 var(--serif); margin: 0 0 14px; letter-spacing: 0; }
-.amp { color: var(--gold); }
+.logo { margin: 0 auto 18px; width: min(460px, 86vw); padding: 14px 18px; border-radius: 28px;
+  background: linear-gradient(180deg, #99c9f2, #9deae5 50%, #99c9f2); box-shadow: 0 10px 40px rgba(0, 0, 0, .35), inset 0 0 0 2px rgba(255, 255, 255, .55); }
+.logo img { display: block; width: 100%; height: auto; filter: drop-shadow(0 0 5px #fff) drop-shadow(0 0 2px #fff); }
 .lede { color: var(--muted); margin: 0 auto; max-width: 56ch; }
 
 main { max-width: 1040px; margin: 0 auto; padding: 8px 16px 40px; }
@@ -143,3 +143,10 @@ footer { max-width: 760px; margin: 0 auto; padding: 8px 20px 60px; color: var(--
 }
 @media (prefers-reduced-motion: reduce) { .ring .value { transition: none; } .skeleton { animation: none; } }
 [hidden] { display: none !important; }
+
+.music { position: fixed; top: 14px; right: 14px; z-index: 5; display: inline-flex; align-items: center; gap: 8px; font: inherit; font-size: 14px;
+  color: var(--text); background: rgba(20, 18, 43, .75); backdrop-filter: blur(6px); border: 1px solid var(--panel-border); border-radius: 999px; padding: 9px 14px; min-height: 42px; cursor: pointer; }
+.music:hover { border-color: var(--gold); }
+.music[aria-pressed="true"] { color: #1a1400; background: var(--gold); border-color: var(--gold); }
+.music[aria-pressed="true"] .slash { display: none; }
+@media (max-width: 480px) { .music .music-label { display: none; } .music { padding: 9px 11px; } }

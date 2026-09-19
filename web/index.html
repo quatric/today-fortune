@@ -6,14 +6,18 @@
   <title>Today &amp; Tomorrow: the Wii fortune channel, in your browser</title>
   <meta name="description" content="Daily fortunes, lucky colours, food, fun and care hints and group compatibility, computed with the maths of the Wii Today &amp; Tomorrow Channel. Runs entirely in your browser.">
   <meta name="theme-color" content="#14122b">
+  <link rel="preload" as="image" href="assets/logo.png">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%2314122b'/%3E%3Ccircle cx='28' cy='32' r='14' fill='%23f4c95d'/%3E%3Ccircle cx='35' cy='29' r='12' fill='%2314122b'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <a class="skip" href="#results">Skip to the fortunes</a>
+  <button id="music" class="music" type="button" aria-pressed="false" aria-label="Background music" title="Background music">
+    <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path class="note" d="M9 18V6l10-2v12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="7" cy="18" r="2.5" fill="currentColor"/><circle cx="17" cy="16" r="2.5" fill="currentColor"/><path class="slash" d="M3 3l18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    <span class="music-label">Music off</span>
+  </button>
   <header class="hero">
-    <p class="eyebrow">Wii Today &amp; Tomorrow Channel</p>
-    <h1>Today <span class="amp">&amp;</span> Tomorrow</h1>
+    <h1 class="logo"><img src="assets/logo.png" width="649" height="352" alt="Today &amp; Tomorrow Channel"></h1>
     <p class="lede">The fortune channel's astrology, rebuilt from its own data. Real planetary positions, the original tables and messages, computed in your browser. Nothing is sent anywhere.</p>
   </header>
 
@@ -45,6 +49,7 @@
         <h2>Edition</h2>
         <label class="field">Language and build
           <select id="edition">
+            <option value="auto">Automatic</option>
             <option value="en">English (Europe)</option>
             <option value="de">Deutsch (Europa)</option>
             <option value="fr">Fran&ccedil;ais (Europe)</option>
@@ -57,13 +62,16 @@
         </label>
         <label id="band-wrap" class="field">Where you are
           <select id="band">
+            <option value="auto">Automatic</option>
             <option value="A">UTC+1: Germany, Italy, Austria, Switzerland, Nordics</option>
             <option value="B">UTC+2: Finland, Greece</option>
+            <option value="I">UTC+9: Japan, Korea</option>
             <option value="Z">UTC&plusmn;0: UK, Ireland, France, Spain, Benelux, Portugal</option>
             <option value="K">UTC+10: Australia</option>
             <option value="M">UTC+12: New Zealand</option>
           </select>
         </label>
+        <p id="detected" class="hint"></p>
         <p class="hint">The channel chose its planetary table from the console's country, by longitude. The Korean and Japanese builds always use UTC+9.</p>
       </div>
     </section>
