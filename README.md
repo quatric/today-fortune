@@ -53,6 +53,21 @@ scores and hand-written messages, plus a date-hash modifier.
 As a module: `Channel(dol=None, data=None, release="eu", band=None, lang="en")` has `fortune()`, `colour()`, `hints()`,
 `compat()` and `next_great_day()`.
 
+## Website
+
+`web/` is a static site that runs the same maths in the browser (no server, no build step, nothing is uploaded). It
+loads the bundled `data/` files, so serve the repository root over http and open `/web/`:
+
+```sh
+python3 -m http.server 8000     # then open http://localhost:8000/web/
+node web/test/engine.test.mjs   # the JavaScript engine against 240 cases computed by the Python tool
+```
+
+It offers up to six people, today / tomorrow / any date (or "like the channel": tomorrow from 17:00), all eight
+editions (six European languages, Korean and Japanese), lucky colours, hints, group compatibility with the next very
+good day, and a zodiac wheel drawn from the day's planetary positions. The text uses the Rodin NTLG Pro font from
+`web/fonts/`; the page falls back to system fonts without it.
+
 ## Rebuilding the data
 
 `tools/build_bundle.py` regenerates `data/` from your own dumps (see its docstring). The output is reproducible.
@@ -66,4 +81,4 @@ real channel or Dolphin are welcome.
 
 ## Tests
 
-`python3 -m unittest discover -s tests` (uses only the bundled data).
+`python3 -m unittest discover -s tests` (uses only the bundled data). `python3 tools/make_web_fixtures.py` regenerates the fixtures for the website's JavaScript test.

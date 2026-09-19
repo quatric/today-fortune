@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Today &amp; Tomorrow: the Wii fortune channel, in your browser</title>
+  <meta name="description" content="Daily fortunes, lucky colours, food, fun and care hints and group compatibility, computed with the maths of the Wii Today &amp; Tomorrow Channel. Runs entirely in your browser.">
+  <meta name="theme-color" content="#14122b">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%2314122b'/%3E%3Ccircle cx='28' cy='32' r='14' fill='%23f4c95d'/%3E%3Ccircle cx='35' cy='29' r='12' fill='%2314122b'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <a class="skip" href="#results">Skip to the fortunes</a>
+  <header class="hero">
+    <p class="eyebrow">Wii Today &amp; Tomorrow Channel</p>
+    <h1>Today <span class="amp">&amp;</span> Tomorrow</h1>
+    <p class="lede">The fortune channel's astrology, rebuilt from its own data. Real planetary positions, the original tables and messages, computed in your browser. Nothing is sent anywhere.</p>
+  </header>
+
+  <main>
+    <section class="panel controls" aria-labelledby="who-h">
+      <div class="col">
+        <h2 id="who-h">Who</h2>
+        <p class="hint">Add up to six people with their birth dates, like registering Miis in the channel.</p>
+        <ul id="people" class="people"></ul>
+        <div class="row">
+          <button id="add" type="button" class="btn">Add a person</button>
+          <button id="example" type="button" class="btn ghost">Try an example</button>
+        </div>
+      </div>
+
+      <div class="col">
+        <h2>When</h2>
+        <div class="seg" role="radiogroup" aria-label="Which day">
+          <button type="button" role="radio" data-mode="auto">Like the channel</button>
+          <button type="button" role="radio" data-mode="today">Today</button>
+          <button type="button" role="radio" data-mode="tomorrow">Tomorrow</button>
+          <button type="button" role="radio" data-mode="date">A date</button>
+        </div>
+        <label id="date-wrap" class="field" hidden>Date
+          <input id="date" type="date" min="1881-01-01" max="2036-12-31">
+        </label>
+        <p id="when-note" class="hint"></p>
+
+        <h2>Edition</h2>
+        <label class="field">Language and build
+          <select id="edition">
+            <option value="en">English (Europe)</option>
+            <option value="de">Deutsch (Europa)</option>
+            <option value="fr">Fran&ccedil;ais (Europe)</option>
+            <option value="es">Espa&ntilde;ol (Europa)</option>
+            <option value="it">Italiano (Europa)</option>
+            <option value="nl">Nederlands (Europa)</option>
+            <option value="kr">한국어 (Korean build)</option>
+            <option value="jp">日本語 (Japanese build)</option>
+          </select>
+        </label>
+        <label id="band-wrap" class="field">Where you are
+          <select id="band">
+            <option value="A">UTC+1: Germany, Italy, Austria, Switzerland, Nordics</option>
+            <option value="B">UTC+2: Finland, Greece</option>
+            <option value="Z">UTC&plusmn;0: UK, Ireland, France, Spain, Benelux, Portugal</option>
+            <option value="K">UTC+10: Australia</option>
+            <option value="M">UTC+12: New Zealand</option>
+          </select>
+        </label>
+        <p class="hint">The channel chose its planetary table from the console's country, by longitude. The Korean and Japanese builds always use UTC+9.</p>
+      </div>
+    </section>
+
+    <div id="status" class="status" role="status" aria-live="polite"></div>
+    <div id="results" tabindex="-1"></div>
+
+    <details class="panel about">
+      <summary>How it works, and how it compares with real astrology</summary>
+      <div class="about-body">
+        <ol>
+          <li>The channel stores where seven bodies stood on every day from 1881 to 2036, in whole degrees. Those are real positions.</li>
+          <li>For each topic it adds a planet from your birth date (Venus for love, Saturn for work, Mercury for study, the Moon for communications, Jupiter for money) to the Moon of the day, giving a position from 1 to 360 around the zodiac.</li>
+          <li>That position selects a fixed score and one of 360 hand-written messages for the topic. A hash of the date then softens weak scores on most days and boosts strong totals on some.</li>
+          <li>The five scores add up to the day's total. Lucky colours, hints and compatibility use the same positions.</li>
+        </ol>
+        <p>Real astrology compares the angles <em>between</em> planets and uses birth time and place. This channel only needs a date, and its score table shows no aspect pattern at all: it is an authored lookup, not geometry. The full write-up, with every table, is in
+          <a href="https://gist.github.com/quatric/222008fe67167e8dcbda6b022b0f7551">the documentation gist</a>; the code is in
+          <a href="https://github.com/quatric/today-fortune">today-fortune</a>.</p>
+      </div>
+    </details>
+  </main>
+
+  <footer>
+    <p>For entertainment only. An unofficial fan project, not affiliated with Nintendo. The Today &amp; Tomorrow Channel is &copy; 2009 Nintendo; its predictions were provided by Media Kobo, Inc. The data comes from the channel's own files. Everything runs in your browser and your entries stay on this device.</p>
+    <p>Planetary tables cover 1881-01-01 to 2036-12-31. Colour swatches are approximations.</p>
+  </footer>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
