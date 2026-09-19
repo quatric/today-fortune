@@ -163,7 +163,7 @@ footer { max-width: 760px; margin: 0 auto; padding: 8px 20px 60px; color: var(--
   :root {
     --sky-top: #0e111a; --sky-mid: #2a3348;
     --panel: rgba(150, 170, 255, .07); --panel-border: rgba(170, 190, 255, .14);
-    --text: #eceef8; --muted: #a9aec6; --accent: #f4c95d; --accent-hi: #ffdb85; --line: rgba(170, 190, 255, .2);
+    --text: #eceef8; --muted: #ffffff; --accent: #f4c95d; --accent-hi: #ffdb85; --line: rgba(170, 190, 255, .2);
     --on-accent: #1a1400; --link: #f4c95d; --link-hi: #ffe08a;
     --surface: rgba(255, 255, 255, .05); --surface-2: rgba(255, 255, 255, .07); --surface-hi: rgba(30, 36, 56, .92); --field: rgba(6, 8, 20, .4);
     --shadow: 0 8px 28px rgba(0, 0, 0, .3); --logo-shadow: rgba(0, 0, 0, .5); --track: rgba(255, 255, 255, .12); --star-off: rgba(255, 255, 255, .2);
@@ -172,5 +172,5 @@ footer { max-width: 760px; margin: 0 auto; padding: 8px 20px 60px; color: var(--
   }
   .btn:hover, .seg button[aria-checked="true"]:hover { background: var(--accent-hi); }
   .skeleton { background: linear-gradient(100deg, rgba(255,255,255,.04) 30%, rgba(255,255,255,.1) 50%, rgba(255,255,255,.04) 70%); background-size: 300% 100%; }
-  .night { background: linear-gradient(180deg, #232a40, #10131e); --muted: #b3b8d2; }
+  .night { background: linear-gradient(180deg, #232a40, #10131e); --muted: #ffffff; }
 }
