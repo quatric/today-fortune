@@ -28,3 +28,12 @@ export function detectEdition(langs = navigator.languages || [navigator.language
   if (tz === "Asia/Tokyo") return "jp";
   return "en";
 }
+
+/** A clock time in the reader's own style: "5 PM" for 12-hour locales such as en-US, "17:00" for 24-hour ones. */
+export function formatHour(hour, locales = navigator.languages) {
+  const d = new Date(2000, 0, 1, hour, 0);
+  let list;
+  try { list = [...(locales || [])]; new Intl.DateTimeFormat(list); } catch { list = undefined; }
+  const twelve = new Intl.DateTimeFormat(list, { hour: "numeric" }).resolvedOptions().hour12;
+  return new Intl.DateTimeFormat(list, twelve ? { hour: "numeric" } : { hour: "2-digit", minute: "2-digit" }).format(d);
+}

@@ -70,6 +70,10 @@ click, so a choice to keep it on resumes on your first click). The page uses the
 title screen with the background removed and the white outline kept, with the ring of zodiac signs copied onto it from the
 channel's banner artwork, and the music is `web/assets/bgm.mp3`, encoded from the channel's BGM03.
 
+The page follows the device's light or dark setting. Your list, edition and choices are saved in the browser and the
+fortunes update to the current day whenever you come back (also at midnight, and at the channel's evening switch, while the page
+is open). The evening time is shown in your locale's style, for example 5 PM or 17:00.
+
 It offers up to six people, today / tomorrow / any date (or "like the channel": tomorrow from 17:00), all eight
 editions (six European languages, Korean and Japanese), lucky colours, hints, group compatibility with the next very
 good day, and a zodiac wheel drawn from the day's planetary positions. The text uses the Rodin NTLG Pro font from

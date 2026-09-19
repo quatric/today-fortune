@@ -1,6 +1,6 @@
 import { ZODIAC } from "./engine.js";
 import { loadChannel, browserIo } from "./data.js";
-import { EDITION_NAME, BAND_NAME, detectBand, detectEdition } from "./locale.js";
+import { EDITION_NAME, BAND_NAME, detectBand, detectEdition, formatHour } from "./locale.js";
 
 const io = browserIo(new URL("../data/", import.meta.url));
 const $ = (s, r = document) => r.querySelector(s);
@@ -29,8 +29,17 @@ const effective = () => {
   return { edition, band: state.band === "auto" ? detected.band : state.band };
 };
 const defaults = { people: [{ name: "", birth: "" }], mode: "auto", date: "", edition: "auto", band: "auto" };
-const saved = store.get("tt-state", {});
-const state = { ...defaults, ...saved, people: Array.isArray(saved.people) && saved.people.length ? saved.people.slice(0, 6) : defaults.people };
+const clean = (s) => {
+  s = s && typeof s === "object" ? s : {};
+  const people = (Array.isArray(s.people) ? s.people : []).slice(0, 6)
+    .map((p) => ({ name: String(p?.name ?? "").slice(0, 24), birth: String(p?.birth ?? "").slice(0, 10) }));
+  return { ...defaults, mode: ["auto", "today", "tomorrow", "date"].includes(s.mode) ? s.mode : "auto", date: String(s.date ?? ""),
+    edition: typeof s.edition === "string" ? s.edition : "auto", band: typeof s.band === "string" ? s.band : "auto",
+    people: people.length ? people : defaults.people };
+};
+const restored = store.get("tt-state", null); // a list saved on an earlier visit
+const state = clean(restored);
+const hadList = () => state.people.some((p) => p.birth);
 const save = () => store.set("tt-state", state);
 
 function parseDate(s) {
@@ -74,7 +83,8 @@ function drawControls() {
   $("#edition").options[0].textContent = `Automatic (${EDITION_NAME[detected.edition]})`;
   $("#band").options[0].textContent = `Automatic (${BAND_NAME[detected.band]})`;
   $("#detected").textContent = `Detected from your device: ${EDITION_NAME[detected.edition]}${detected.tz ? `, ${detected.tz}` : ""}. Choose a different edition or zone above to override.`;
-  $("#when-note").textContent = { auto: "Opens on today's fortune before 17:00 and on tomorrow's from 17:00, as the channel did.",
+  const five = formatHour(17);
+  $("#when-note").textContent = { auto: `Opens on today's fortune before ${five} and on tomorrow's from ${five}, as the channel did.`,
     today: "The date is your device's date.", tomorrow: "Tomorrow, from your device's date.", date: "Any date from 1881 to 2036." }[state.mode];
 }
 
@@ -188,7 +198,7 @@ function skyCard(ch, people, day) {
     <ul class="legend">${legend}</ul></article>`;
 }
 
-let token = 0;
+let token = 0, welcome = restored !== null && hadList();
 async function refresh() {
   const mine = ++token, status = $("#status"), out = $("#results");
   const today = resolveDay();
@@ -209,13 +219,35 @@ async function refresh() {
   try { ch = await getChannel(); } catch (e) { status.textContent = `Could not load the data (${e.message}). Serve this folder over http.`; status.classList.add("error"); return; }
   if (mine !== token) return;
   const day = today.day;
-  status.textContent = `${warn}${today.mode === "date" ? "" : today.mode === "tomorrow" ? "Tomorrow: " : "Today: "}${fmtDay(day)}`;
+  shownKey = JSON.stringify(today); scheduleBoundary();
+  const names = people.map((p) => p.name.trim()).filter(Boolean);
+  const back = welcome && names.length ? `Welcome back, ${new Intl.ListFormat(navigator.languages?.[0], { style: "long", type: "conjunction" }).format(names)}. ` : ""; welcome = false;
+  status.textContent = `${warn}${back}${today.mode === "date" ? "" : today.mode === "tomorrow" ? "Tomorrow: " : "Today: "}${fmtDay(day)}`;
   out.innerHTML = people.map((p) => personCard(ch, p, p.i, day)).join("") +
     `<div class="grid2">${groupCard(ch, people, day)}${skyCard(ch, people, day)}</div>`;
   requestAnimationFrame(() => requestAnimationFrame(() => out.querySelectorAll(".ring .value").forEach((c) => { c.style.strokeDashoffset = c.dataset.offset; })));
 }
 
 drawPeople(); drawControls(); refresh();
+
+// --- keeping the list: saved on this device, refreshed whenever the day (or the channel's evening switch) comes round ---
+$("#forget").addEventListener("click", () => {
+  state.people = [{ name: "", birth: "" }]; save(); drawPeople(); drawControls(); refresh();
+});
+window.addEventListener("storage", (e) => { // the same page open in another tab
+  if (e.key !== "tt-state") return;
+  Object.assign(state, clean(store.get("tt-state", null))); drawPeople(); drawControls(); refresh();
+});
+let boundary;
+function scheduleBoundary() {
+  clearTimeout(boundary);
+  const now = new Date(), next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 1);
+  if (state.mode === "auto") { const five = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 17, 0, 1); if (five > now && five < next) next.setTime(five.getTime()); }
+  boundary = setTimeout(() => { refresh(); }, Math.min(next - now, 2 ** 31 - 1));
+}
+let shownKey = "";
+document.addEventListener("visibilitychange", () => { if (!document.hidden) { const r = resolveDay(); if (r && JSON.stringify(r) !== shownKey) refresh(); scheduleBoundary(); } });
+window.addEventListener("focus", () => { const r = resolveDay(); if (r && JSON.stringify(r) !== shownKey) refresh(); });
 
 // --- background music (off by default; the browser only allows sound after a click) ------------------
 const music = (() => {
