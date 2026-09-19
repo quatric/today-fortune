@@ -32,7 +32,7 @@
           <button id="add" type="button" class="btn">Add a person</button>
           <button id="example" type="button" class="btn ghost">Try an example</button>
         </div>
-        <p class="hint saved">Your list is saved on this device and the fortunes update to the day whenever you come back.
+        <p class="hint saved">Your list is saved on this device and the fortunes update whenever you come back.
           <button id="forget" type="button" class="linkbtn">Clear the list</button></p>
       </div>
 
@@ -67,7 +67,7 @@
           <select id="band">
             <option value="auto">Automatic</option>
             <option value="A">UTC+1: Germany, Italy, Austria, Switzerland, Nordics</option>
-            <option value="B">UTC+2: Finland, Greece</option>
+            <option value="B">UTC+2: Finland, Greece, and the default for any other country</option>
             <option value="I">UTC+9: Japan, Korea</option>
             <option value="Z">UTC&plusmn;0: UK, Ireland, France, Spain, Benelux, Portugal</option>
             <option value="K">UTC+10: Australia</option>
@@ -75,7 +75,7 @@
           </select>
         </label>
         <p id="detected" class="hint"></p>
-        <p class="hint">The channel chose its planetary table from the console's country, by longitude. The Korean and Japanese builds always use UTC+9.</p>
+        <p class="hint">The channel chose its planetary table from the console's country and used UTC+2 for any country it doesn't list. The Korean and Japanese builds always use UTC+9.</p>
       </div>
     </section>
 

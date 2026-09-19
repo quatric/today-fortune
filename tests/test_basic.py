@@ -56,7 +56,7 @@ class BundledData(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.eu = tf.Channel()
+        cls.eu = tf.Channel(band="A")
 
     def test_fortune(self):
         r = self.eu.fortune((1990, 5, 17), (2026, 9, 18))
@@ -64,6 +64,14 @@ class BundledData(unittest.TestCase):
         self.assertEqual([t["points"] for t in r["topics"]], [6, 0, 16, 15, 14])
         self.assertEqual([t["message_number"] for t in r["topics"]], [275, 556, 1018, 1296, 1800])
         self.assertTrue(r["topics"][0]["text"].startswith("You may well do something you regret"))
+
+    def test_matches_the_real_channel(self):
+        """Observed on the real channel (European build, a country it does not list, so the default band B):
+        birth date 2001-12-08 on 2026-09-18 showed a total of 57 and the fun hints View, History, Out of the house."""
+        ch = tf.Channel()  # defaults: European build, band B
+        self.assertEqual(ch.band, "B")
+        self.assertEqual(ch.fortune((2001, 12, 8), (2026, 9, 18))["total"], 57)
+        self.assertEqual(ch.hints([(2001, 12, 8)], (2026, 9, 18))["fun"], ["View", "History", "Out of the house"])
 
     def test_colour_and_languages(self):
         self.assertEqual(self.eu.colour((1990, 5, 17), (2026, 9, 18)), (8, "Dark Green"))

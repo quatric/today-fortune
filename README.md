@@ -26,7 +26,7 @@ python3 today_fortune.py --lang de hints 1990-05-17             # German words (
 | Option | Meaning |
 |---|---|
 | `--release eu\|kr\|jp` | which build's tables and words to use (default `eu`) |
-| `--band A\|B\|I\|K\|M\|Z` | time-zone band of the planetary positions; default `A` for `eu` and `I` for `kr`/`jp` (the channel picks it from the console's country) |
+| `--band A\|B\|I\|K\|M\|Z` | time-zone band of the planetary positions; default `B` for `eu` (what the channel uses for any country it does not list) and `I` for `kr`/`jp`; the channel picks it from the console's country |
 | `--lang en\|de\|fr\|es\|it\|nl` | language of the hint words and colour names (EU) |
 | `--when auto\|today\|tomorrow\|both` | `auto` follows the channel: today before 17:00, tomorrow from 17:00 |
 | `--day YYYY-MM-DD` | an explicit date instead of `--when` |
@@ -71,7 +71,7 @@ title screen with the background removed and the white outline kept, with the ri
 channel's banner artwork, and the music is `web/assets/bgm.mp3`, encoded from the channel's BGM03.
 
 The page follows the device's light or dark setting. Your list, edition and choices are saved in the browser and the
-fortunes update to the current day whenever you come back (also at midnight, and at the channel's evening switch, while the page
+fortunes update whenever you come back (also at midnight, and at the channel's evening switch, while the page
 is open). The evening time is shown in your locale's style, for example 5 PM or 17:00.
 
 It offers up to six people, today / tomorrow / any date (or "like the channel": tomorrow from 17:00), all eight
@@ -87,7 +87,8 @@ good day, and a zodiac wheel drawn from the day's planetary positions. The text 
 
 The formulas and tables are read from the channel's code and data. The bundled results were checked against the dumps
 on 750 random cases across all three builds with no differences, and the Korean and Japanese builds (which store their
-data independently) agree with each other. The output has **not** been compared with a live console yet; reports from a
+data independently) agree with each other. One case has been checked against the real channel: birth date 2001-12-08 on 2026-09-18 (European build, default
+band) showed a total of 57 and the fun hints View, History, Out of the house, exactly as computed here. More reports from a
 real channel or Dolphin are welcome.
 
 ## Tests

@@ -2,20 +2,22 @@
 // --- locale and time zone detection ---------------------------------------------------------------
 export const EDITION_NAME = { en: "English", de: "Deutsch", fr: "Français", es: "Español", it: "Italiano", nl: "Nederlands", kr: "한국어", jp: "日本語" };
 export const BAND_NAME = { A: "UTC+1", B: "UTC+2", I: "UTC+9", K: "UTC+10", M: "UTC+12", Z: "UTC±0" };
-const BAND_UTC = { Z: 0, A: 1, B: 2, I: 9, K: 10, M: 12 };
-// Countries the channel itself listed for a band (by time zone name); everything else goes to the nearest band.
+// The countries the channel's own table lists (it maps a console's country to one of these planetary tables), by time zone
+// name. Any other country falls back to band B (UTC+2), exactly as on a real console.
+export const DEFAULT_BAND = "B";
 const TZ_BAND = [
-  [/^Europe\/(London|Dublin|Paris|Madrid|Amsterdam|Brussels|Luxembourg|Lisbon)$|^Atlantic\/(Canary|Madeira|Azores)$/, "Z"],
-  [/^Europe\/(Berlin|Rome|Vienna|Zurich|Stockholm|Oslo|Copenhagen|Busingen|Vaduz|Vatican|San_Marino)$/, "A"],
-  [/^Europe\/(Helsinki|Athens)$/, "B"],
-  [/^Asia\/(Tokyo|Seoul|Pyongyang)$/, "I"],
+  [/^Europe\/(London|Jersey|Guernsey|Isle_of_Man|Dublin|Paris|Madrid|Amsterdam|Brussels|Luxembourg|Lisbon)$|^Europe\/Ceuta$|^Atlantic\/(Canary|Madeira|Azores)$/, "Z"],
+  [/^Europe\/(Berlin|Busingen|Rome|Vienna|Zurich|Stockholm|Oslo|Copenhagen)$|^Arctic\/Longyearbyen$/, "A"],
+  [/^Europe\/(Helsinki|Mariehamn|Athens)$/, "B"],
   [/^Australia\//, "K"],
-  [/^Pacific\/(Auckland|Chatham|Fiji)$|^Antarctica\/McMurdo$/, "M"],
+  [/^Pacific\/(Auckland|Chatham)$|^Antarctica\/McMurdo$/, "M"],
 ];
-export function detectBand(tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "", now = new Date()) {
+/** True if the time zone belongs to a country the channel lists. */
+export const isListedZone = (tz) => TZ_BAND.some(([re]) => re.test(tz));
+/** Band (planetary table) for a time zone: the channel's own country mapping, else its default. */
+export function detectBand(tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "") {
   for (const [re, band] of TZ_BAND) if (re.test(tz)) return band;
-  const y = now.getFullYear(), std = -Math.max(new Date(y, 0, 1).getTimezoneOffset(), new Date(y, 6, 1).getTimezoneOffset()) / 60;
-  return Object.entries(BAND_UTC).sort((p, q) => Math.abs(p[1] - std) - Math.abs(q[1] - std))[0][0];
+  return DEFAULT_BAND;
 }
 export function detectEdition(langs = navigator.languages || [navigator.language || "en"], tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "") {
   for (const l of langs) {

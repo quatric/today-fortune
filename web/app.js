@@ -1,6 +1,6 @@
 import { ZODIAC } from "./engine.js";
 import { loadChannel, browserIo } from "./data.js";
-import { EDITION_NAME, BAND_NAME, detectBand, detectEdition, formatHour } from "./locale.js";
+import { EDITION_NAME, BAND_NAME, detectBand, detectEdition, formatHour, isListedZone } from "./locale.js";
 
 const io = browserIo(new URL("../data/", import.meta.url));
 const $ = (s, r = document) => r.querySelector(s);
@@ -23,7 +23,8 @@ const store = {
   get(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } },
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* private mode */ } },
 };
-const detected = { edition: detectEdition(), band: detectBand(), tz: Intl.DateTimeFormat().resolvedOptions().timeZone || "" };
+const tzName = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+const detected = { edition: detectEdition(), band: detectBand(tzName), tz: tzName, listed: isListedZone(tzName) };
 const effective = () => {
   const edition = state.edition === "auto" ? detected.edition : state.edition;
   return { edition, band: state.band === "auto" ? detected.band : state.band };
@@ -82,7 +83,9 @@ function drawControls() {
   $("#band-wrap").hidden = eff.edition === "kr" || eff.edition === "jp";
   $("#edition").options[0].textContent = `Automatic (${EDITION_NAME[detected.edition]})`;
   $("#band").options[0].textContent = `Automatic (${BAND_NAME[detected.band]})`;
-  $("#detected").textContent = `Detected from your device: ${EDITION_NAME[detected.edition]}${detected.tz ? `, ${detected.tz}` : ""}. Choose a different edition or zone above to override.`;
+  $("#detected").textContent = `Detected from your device: ${EDITION_NAME[detected.edition]}${detected.tz ? `, ${detected.tz}` : ""}. ` +
+    (detected.listed ? "" : `That is not one of the countries the channel lists, so it uses its default table (${BAND_NAME[detected.band]}), as a real console does. `) +
+    "Choose a different edition or zone above to override.";
   const five = formatHour(17);
   $("#when-note").textContent = { auto: `Opens on today's fortune before ${five} and on tomorrow's from ${five}, as the channel did.`,
     today: "The date is your device's date.", tomorrow: "Tomorrow, from your device's date.", date: "Any date from 1881 to 2036." }[state.mode];
@@ -166,6 +169,13 @@ function groupCard(ch, people, day) {
     <p class="lab">Care</p>${chips(h.care, "care")}</article>`;
 }
 
+// "The sky today" / "The sky tomorrow" when the chosen day is one of those, otherwise "The sky that day".
+function skyTitle(day) {
+  const now = new Date(), same = (t) => day[0] === t.getFullYear() && day[1] === t.getMonth() + 1 && day[2] === t.getDate();
+  if (same(now)) return "The sky today";
+  if (same(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1))) return "The sky tomorrow";
+  return "The sky that day";
+}
 function skyCard(ch, people, day) {
   const sky = ch.sky(day), R = 185, R2 = 150, cx = 200, cy = 200;
   const pt = (lon, r) => { const a = Math.PI + (lon * Math.PI) / 180; return [cx + r * Math.cos(a), cy - r * Math.sin(a)]; };
@@ -192,7 +202,7 @@ function skyCard(ch, people, day) {
       <text x="${x}" y="${y + 4}" text-anchor="middle" font-size="11" font-weight="700" fill="#14122b">${esc(label)}</text>`;
   });
   const legend = PLANETS.map(([key, sym, name, colour]) => `<li><span style="color:${colour}" aria-hidden="true">${sym}</span> <b>${name}</b> ${degIn(sky[key])}° ${ZODIAC[signOf(sky[key])]}</li>`).join("");
-  return `<article class="panel card night"><h2>The sky that day</h2>
+  return `<article class="panel card night"><h2>${esc(skyTitle(day))}</h2>
     <p class="hint">${esc(fmtDay(day))}. Positions are the channel's own table, in whole degrees; the gold dots are the natal Suns.</p>
     <svg class="wheel" viewBox="0 0 400 400" role="img" aria-label="Zodiac wheel showing the planets on ${esc(fmtDay(day))}">${svg}</svg>
     <ul class="legend">${legend}</ul></article>`;

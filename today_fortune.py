@@ -309,7 +309,7 @@ class Channel:
 
     def __init__(self, dol=None, data=None, release="eu", band=None, lang="en", bundle=DATA_DIR):
         self.rel, self.lang = release, lang
-        self.band = band or ("A" if release == "eu" else "I")
+        self.band = band or ("B" if release == "eu" else "I")  # B: the channel's default for a country it does not list
         if dol:
             self.src = DumpSource(dol, data, release, lang)
         else:  # bundled data, plus message text from a data archive if one is given

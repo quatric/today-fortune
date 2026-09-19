@@ -1,16 +1,19 @@
-import { detectBand, detectEdition, formatHour } from "../locale.js";
+import { detectBand, detectEdition, formatHour, isListedZone } from "../locale.js";
 const cases = [
-  [["Europe/Berlin"], "A"], [["Europe/Paris"], "Z"], [["Europe/London"], "Z"], [["Europe/Helsinki"], "B"], [["Australia/Sydney"], "K"],
-  [["Pacific/Auckland"], "M"], [["Asia/Tokyo"], "I"], [["Asia/Seoul"], "I"], [["Europe/Warsaw"], "A"], [["Europe/Athens"], "B"],
-  [["America/New_York"], "Z"], [["Europe/Moscow"], "B"],
+  ["Europe/Berlin", "A"], ["Europe/Zurich", "A"], ["Europe/Stockholm", "A"], ["Europe/Paris", "Z"], ["Europe/London", "Z"], ["Europe/Madrid", "Z"],
+  ["Atlantic/Canary", "Z"], ["Europe/Lisbon", "Z"], ["Europe/Helsinki", "B"], ["Europe/Athens", "B"], ["Australia/Sydney", "K"], ["Australia/Perth", "K"],
+  ["Pacific/Auckland", "M"],
+  // not in the channel's country table: its default band
+  ["America/New_York", "B"], ["America/Chicago", "B"], ["Europe/Warsaw", "B"], ["Europe/Moscow", "B"], ["Asia/Tokyo", "B"], ["Asia/Seoul", "B"],
+  ["Europe/Vaduz", "B"], ["Africa/Cairo", "B"], ["", "B"],
 ];
 let bad = 0;
-for (const [[tz], want] of cases) {
-  const got = detectBand(tz, new Date(2026, 0, 15));
-  // nearest-band fallback depends on the machine's own offset only when tz is unlisted: only assert listed zones strictly
-  const listed = /Berlin|Paris|London|Helsinki|Sydney|Auckland|Tokyo|Seoul|Athens/.test(tz);
-  if (listed && got !== want) { bad++; console.log("band", tz, got, "want", want); }
+for (const [tz, want] of cases) {
+  const got = detectBand(tz);
+  if (got !== want) { bad++; console.log("band", tz, got, "want", want); }
 }
+for (const tz of ["Europe/Berlin", "Europe/Athens", "Australia/Sydney"]) if (!isListedZone(tz)) { bad++; console.log("listed", tz); }
+for (const tz of ["America/Chicago", "Asia/Tokyo", "Europe/Warsaw"]) if (isListedZone(tz)) { bad++; console.log("not listed", tz); }
 const ed = [[["de-CH", "en"], "de"], [["en-GB"], "en"], [["ko-KR"], "kr"], [["ja"], "jp"], [["pt-BR"], "en"], [["fr-CA", "en"], "fr"], [["nl-BE"], "nl"], [["zh-CN", "es"], "es"]];
 for (const [l, want] of ed) { const got = detectEdition(l, ""); if (got !== want) { bad++; console.log("edition", l, got, "want", want); } }
 if (detectEdition(["pt"], "Asia/Tokyo") !== "jp" || detectEdition(["pt"], "Asia/Seoul") !== "kr") { bad++; console.log("tz fallback"); }
