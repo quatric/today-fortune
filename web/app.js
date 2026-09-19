@@ -182,7 +182,7 @@ function skyCard(ch, people, day) {
       <text x="${x}" y="${y + 4}" text-anchor="middle" font-size="11" font-weight="700" fill="#14122b">${esc(label)}</text>`;
   });
   const legend = PLANETS.map(([key, sym, name, colour]) => `<li><span style="color:${colour}" aria-hidden="true">${sym}</span> <b>${name}</b> ${degIn(sky[key])}° ${ZODIAC[signOf(sky[key])]}</li>`).join("");
-  return `<article class="panel card"><h2>The sky that day</h2>
+  return `<article class="panel card night"><h2>The sky that day</h2>
     <p class="hint">${esc(fmtDay(day))}. Positions are the channel's own table, in whole degrees; the gold dots are the natal Suns.</p>
     <svg class="wheel" viewBox="0 0 400 400" role="img" aria-label="Zodiac wheel showing the planets on ${esc(fmtDay(day))}">${svg}</svg>
     <ul class="legend">${legend}</ul></article>`;

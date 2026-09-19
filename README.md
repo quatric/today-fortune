@@ -66,8 +66,9 @@ node web/test/locale.test.mjs   # language and time-zone detection
 
 The edition (language and build) and the time-zone band are guessed from the browser's language list and time zone, and
 can be overridden. A speaker button toggles looping background music (off by default; browsers only allow sound after a
-click, so a choice to keep it on resumes on your first click). The logo is `web/assets/logo.png`, cut out of a screenshot of the channel's title screen with the background removed and
-the white outline kept, and the music is `web/assets/bgm.mp3`, encoded from the channel's BGM03.
+click, so a choice to keep it on resumes on your first click). The page uses the channel's own sky-blue gradient. The logo is `web/assets/logo.png`, cut out of a screenshot of the channel's
+title screen with the background removed and the white outline kept, with the ring of zodiac signs copied onto it from the
+channel's banner artwork, and the music is `web/assets/bgm.mp3`, encoded from the channel's BGM03.
 
 It offers up to six people, today / tomorrow / any date (or "like the channel": tomorrow from 17:00), all eight
 editions (six European languages, Korean and Japanese), lucky colours, hints, group compatibility with the next very
