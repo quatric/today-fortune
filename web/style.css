@@ -118,7 +118,6 @@ select { text-overflow: ellipsis; }
 .badge.r2 { background: var(--accent); color: var(--on-accent); }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 14px; }
 .chip { padding: 6px 14px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface-2); }
-.chip.care { border-color: var(--teal); }
 .lab { font: 600 12px var(--sans); text-transform: uppercase; letter-spacing: .12em; color: var(--muted); margin: 8px 0 0; }
 
 .wheel { width: 100%; max-width: 380px; margin: 0 auto; display: block; }

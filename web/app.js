@@ -163,10 +163,10 @@ function groupCard(ch, people, day) {
       <p><span class="badge r${r}">${RATING[r]}</span></p>
       ${next ? `<p class="hint">The next very good day for this group is <strong>${esc(fmtDay(next))}</strong>.</p>` : r === 2 ? "" : `<p class="hint">No very good day in the next 90 days.</p>`}`;
   }
-  const chips = (list, cls = "") => `<div class="chips">${list.map((w) => `<span class="chip ${cls}">${esc(w)}</span>`).join("")}</div>`;
+  const chips = (list) => `<div class="chips">${list.map((w) => `<span class="chip">${esc(w)}</span>`).join("")}</div>`;
   return `<article class="panel card"><h2>${births.length > 1 ? "The group" : "Hints"}</h2>${compat}
     <p class="lab">Food</p>${chips(h.food)}<p class="lab">Fun</p>${chips(h.fun)}
-    <p class="lab">Care</p>${chips(h.care, "care")}</article>`;
+    <p class="lab">Care</p>${chips(h.care)}</article>`;
 }
 
 // "The sky today" / "The sky tomorrow" when the chosen day is one of those, otherwise "The sky that day".
