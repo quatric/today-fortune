@@ -40,9 +40,8 @@ a:hover { color: #ffe08a; }
 :focus-visible { outline: 3px solid var(--teal); outline-offset: 2px; border-radius: 6px; }
 
 .hero { text-align: center; padding: 56px 20px 24px; max-width: 760px; margin: 0 auto; }
-.logo { margin: 0 auto 18px; width: min(460px, 86vw); padding: 14px 18px; border-radius: 28px;
-  background: linear-gradient(180deg, #99c9f2, #9deae5 50%, #99c9f2); box-shadow: 0 10px 40px rgba(0, 0, 0, .35), inset 0 0 0 2px rgba(255, 255, 255, .55); }
-.logo img { display: block; width: 100%; height: auto; filter: drop-shadow(0 0 5px #fff) drop-shadow(0 0 2px #fff); }
+.logo { margin: 0 auto 10px; width: min(520px, 88vw); }
+.logo img { display: block; width: 100%; height: auto; filter: drop-shadow(0 6px 24px rgba(0, 0, 0, .35)); }
 .lede { color: var(--muted); margin: 0 auto; max-width: 56ch; }
 
 main { max-width: 1040px; margin: 0 auto; padding: 8px 16px 40px; }
