@@ -79,6 +79,8 @@ editions (six European languages, Korean and Japanese), lucky colours, hints, gr
 good day, and a zodiac wheel drawn from the day's planetary positions. The text uses the Rodin NTLG Pro font from
 `web/fonts/`; the page falls back to system fonts without it.
 
+The site can be self-hosted; see [`deploy/`](deploy/README.md).
+
 ## Rebuilding the data
 
 `tools/build_bundle.py` regenerates `data/` from your own dumps (see its docstring). The output is reproducible.

@@ -1,0 +1,16 @@
+#!/bin/sh
+# Pull the site from GitHub and publish it: web/* at the root, data/ next to it (the page loads ../data/ from app.js).
+set -eu
+SRC=/opt/today-fortune
+OUT=/var/www/site
+if [ -d "$SRC/.git" ]; then git -C "$SRC" fetch -q --depth 1 origin main && git -C "$SRC" reset -q --hard origin/main
+else git clone -q --depth 1 https://github.com/quatric/today-fortune.git "$SRC"; fi
+NEW=$(mktemp -d /var/www/.site.XXXXXX)
+cp -a "$SRC/web/." "$NEW/"
+rm -rf "$NEW/test" "$NEW/package.json"
+cp -a "$SRC/data" "$NEW/data"
+chmod -R a+rX "$NEW"
+[ -d "$OUT" ] && mv "$OUT" "$OUT.old"
+mv "$NEW" "$OUT"
+rm -rf "$OUT.old"
+echo "published $(git -C "$SRC" rev-parse --short HEAD)"
