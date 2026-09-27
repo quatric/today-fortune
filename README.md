@@ -66,11 +66,15 @@ node web/test/locale.test.mjs   # language and time-zone detection
 
 The edition (language and build) and the time-zone band are guessed from the browser's language list and time zone, and
 can be overridden. A speaker button toggles looping background music (off by default; browsers only allow sound after a
-click, so a choice to keep it on resumes on your first click). The page uses the channel's own sky-blue gradient. The logo is `web/assets/logo.png`, cut out of a screenshot of the channel's
-title screen with the background removed and the white outline kept, with the ring of zodiac signs copied onto it from the
-channel's banner artwork, and the music is `web/assets/bgm.mp3`, encoded from the channel's BGM03.
+click, so a choice to keep it on resumes on your first click). The background is the channel's banner: its sky gradient
+runs through the banner's own colour loop, and its two zodiac wheels spin behind the page (`web/assets/wheel.svg`, redrawn
+as vectors from the ring textures of the channel's title screen). The logo is `web/assets/logo.svg`, rebuilt as vectors
+from the banner's logo: the lettering is Rodin Bold, placed letter by letter where the banner's textures put it, and the
+zodiac belt and lines follow the proportions of the earlier logo cut from the title screen, with the signs traced from
+the banner's glyph ring. The music is `web/assets/bgm.mp3`, encoded from the
+channel's BGM03.
 
-The page follows the device's light or dark setting. Your list, edition and choices are saved in the browser and the
+The page follows the device's light or dark setting until the toggle in the top corner saves a choice. Your list, edition and choices are saved in the browser and the
 fortunes update whenever you come back (also at midnight, and at the channel's evening switch, while the page
 is open). The evening time is shown in your locale's style, for example 5 PM or 17:00.
 

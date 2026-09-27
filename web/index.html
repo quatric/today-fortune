@@ -12,7 +12,7 @@
     (() => { let t; try { t = JSON.parse(localStorage.getItem("tt-theme")); } catch {}
       document.documentElement.dataset.theme = t === "dark" || t === "light" ? t : matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"; })();
   </script>
-  <link rel="preload" as="image" href="assets/logo.png">
+  <link rel="preload" as="image" href="assets/logo.svg">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%2314122b'/%3E%3Ccircle cx='28' cy='32' r='14' fill='%23f4c95d'/%3E%3Ccircle cx='35' cy='29' r='12' fill='%2314122b'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="style.css">
 </head>
@@ -29,7 +29,7 @@
     <span class="toggle-label">Music off</span>
   </button>
   <header class="hero">
-    <h1 class="logo"><img src="assets/logo.png" width="970" height="540" alt="Today &amp; Tomorrow Channel"></h1>
+    <h1 class="logo"><img src="assets/logo.svg" width="984" height="556" alt="Today &amp; Tomorrow Channel"></h1>
     <p class="lede">The Wii fortune channel's astrology, rebuilt from its own data. Real planetary positions, the original tables and messages, computed in your browser.</p>
   </header>
 
