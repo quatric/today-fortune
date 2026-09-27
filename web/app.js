@@ -160,7 +160,7 @@ function groupCard(ch, people, day) {
   if (births.length >= 2) {
     const r = ch.compat(births, day), next = r === 2 ? null : ch.nextGreatDay(births, day);
     compat = `<p class="lab">Compatibility of ${births.length} people</p>
-      <p><span class="badge r${r}">${RATING[r]}</span></p>
+      <span class="badge r${r}">${RATING[r]}</span>
       ${next ? `<p class="hint">The next very good day for this group is <strong>${esc(fmtDay(next))}</strong>.</p>` : r === 2 ? "" : `<p class="hint">No very good day in the next 90 days.</p>`}`;
   }
   const chips = (list) => `<div class="chips">${list.map((w) => `<span class="chip">${esc(w)}</span>`).join("")}</div>`;
@@ -201,11 +201,11 @@ function skyCard(ch, people, day) {
     svg += `<circle cx="${x}" cy="${y}" r="9" fill="#f4c95d" stroke="#14122b" stroke-width="2"><title>${esc(p.name.trim() || `Person ${i + 1}`)}: natal Sun</title></circle>
       <text x="${x}" y="${y + 4}" text-anchor="middle" font-size="11" font-weight="700" fill="#14122b">${esc(label)}</text>`;
   });
-  const legend = PLANETS.map(([key, sym, name, colour]) => `<li><span style="color:${colour}" aria-hidden="true">${sym}</span> <b>${name}</b> ${degIn(sky[key])}° ${ZODIAC[signOf(sky[key])]}</li>`).join("");
+  const legend = PLANETS.map(([key, sym, name, colour]) => `<li><span class="sym" style="color:${colour}" aria-hidden="true">${sym}</span> <b>${name}</b> <span>${degIn(sky[key])}° ${ZODIAC[signOf(sky[key])]}</span></li>`).join("");
   return `<article class="panel card night"><h2>${esc(skyTitle(day))}</h2>
     <p class="hint">${esc(fmtDay(day))}. Positions are the channel's own table, in whole degrees; the gold dots are the natal Suns.</p>
-    <svg class="wheel" viewBox="0 0 400 400" role="img" aria-label="Zodiac wheel showing the planets on ${esc(fmtDay(day))}">${svg}</svg>
-    <ul class="legend">${legend}</ul></article>`;
+    <div class="sky-body"><svg class="wheel" viewBox="0 0 400 400" role="img" aria-label="Zodiac wheel showing the planets on ${esc(fmtDay(day))}">${svg}</svg>
+    <ul class="legend">${legend}</ul></div></article>`;
 }
 
 let token = 0, welcome = restored !== null && hadList();
@@ -220,7 +220,7 @@ async function refresh() {
   status.textContent = warn;
   if (bad) status.classList.add("error");
   if (!people.length) {
-    out.innerHTML = `<div class="panel empty"><span class="glyph" aria-hidden="true">☉\uFE0E☽\uFE0E</span>Enter a birth date, or <button class="btn ghost" id="try" type="button">try an example</button>.</div>`;
+    out.innerHTML = `<div class="panel empty"><span class="glyph" aria-hidden="true">☉\uFE0E☽\uFE0E</span>Enter a birth date, or <button class="btn ghost" id="try" type="button">try an example</button></div>`;
     $("#try").addEventListener("click", () => $("#example").click());
     return;
   }

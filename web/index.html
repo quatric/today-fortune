@@ -96,15 +96,22 @@
     <details class="panel about">
       <summary>How it works, and how it compares with real astrology</summary>
       <div class="about-body">
-        <ol>
-          <li>The channel stores where seven bodies stood on every day from 1881 to 2036, in whole degrees. Those are real positions.</li>
-          <li>For each topic it adds a planet from your birth date (Venus for love, Saturn for work, Mercury for study, the Moon for communications, Jupiter for money) to the Moon of the day, giving a position from 1 to 360 around the zodiac.</li>
-          <li>That position selects a fixed score and one of 360 hand-written messages for the topic. A hash of the date then softens weak scores on most days and boosts strong totals on some.</li>
-          <li>The five scores add up to the day's total. Lucky colours, hints and compatibility use the same positions.</li>
-        </ol>
-        <p>Real astrology compares the angles <em>between</em> planets and uses birth time and place. This channel only needs a date, and its score table shows no aspect pattern at all: it is an authored lookup, not geometry. The full write-up, with every table, is in
-          <a href="https://gist.github.com/quatric/222008fe67167e8dcbda6b022b0f7551">the documentation gist</a>; the code is in
-          <a href="https://github.com/quatric/today-fortune">today-fortune</a>.</p>
+        <div>
+          <h3 class="lab">How it works</h3>
+          <ol class="steps">
+            <li>The channel stores where seven bodies stood on every day from 1881 to 2036, in whole degrees. Those are real positions.</li>
+            <li>For each topic it adds a planet from your birth date (Venus for love, Saturn for work, Mercury for study, the Moon for communications, Jupiter for money) to the Moon of the day, giving a position from 1 to 360 around the zodiac.</li>
+            <li>That position selects a fixed score and one of 360 hand-written messages for the topic. A hash of the date then softens weak scores on most days and boosts strong totals on some.</li>
+            <li>The five scores add up to the day's total. Lucky colours, hints and compatibility use the same positions.</li>
+          </ol>
+        </div>
+        <div>
+          <h3 class="lab">Compared with real astrology</h3>
+          <p>Real astrology compares the angles <em>between</em> planets and uses birth time and place. This channel only needs a date, and its score table shows no aspect pattern at all: it is an authored lookup, not geometry.</p>
+          <p>The full write-up, with every table, is in
+            <a href="https://gist.github.com/quatric/222008fe67167e8dcbda6b022b0f7551">the documentation gist</a>; the code is in
+            <a href="https://github.com/quatric/today-fortune">today-fortune</a>.</p>
+        </div>
       </div>
     </details>
   </main>
