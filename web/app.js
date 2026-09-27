@@ -313,17 +313,21 @@ const sky = (() => {
     const mix = (a, b) => rgb(a).map((v, j) => v + (rgb(b)[j] - v) * s);
     return [mix(e0, e1), mix(m0, m1)];
   }
-  function paint(frame) {
+  let rootAt = -Infinity;
+  function paint(frame, now) {
     let cols = frame < LOOP_FROM ? sample(START, frame) : sample(LOOP, (frame - LOOP_FROM) % LOOP_LEN);
     if (document.documentElement.dataset.theme === "dark") cols = cols.map((c, i) => c.map((v, j) => NIGHT[i][j] + (v - NIGHT[i][j]) * TINT[i]));
     const [edge, mid] = cols.map((c) => `rgb(${c.map(Math.round).join(" ")})`);
     el.style.setProperty("--sky-edge", edge); el.style.setProperty("--sky-mid", mid);
+    // Mobile browsers show the root background under a sliding toolbar or on fast scrolls, so it follows the sky;
+    // only once a second, since changing it can repaint the whole page.
+    if (now - rootAt >= 1000) { rootAt = now; document.documentElement.style.backgroundColor = edge; }
   }
   const t0 = performance.now(), frameAt = (now) => still ? 0 : (now - t0) * .06;
   let last = -Infinity;
-  const tick = (now) => { if (now - last >= 50) { last = now; paint(frameAt(now)); } requestAnimationFrame(tick); };
-  if (still) paint(0); else requestAnimationFrame(tick);
-  return { repaint: () => paint(frameAt(performance.now())) };
+  const tick = (now) => { if (now - last >= 50) { last = now; paint(frameAt(now), now); } requestAnimationFrame(tick); };
+  if (still) paint(0, t0); else requestAnimationFrame(tick);
+  return { repaint: () => { rootAt = -Infinity; const now = performance.now(); paint(frameAt(now), now); } };
 })();
 
 // --- theme: follows the device until the toggle saves a choice -----------------------------------------

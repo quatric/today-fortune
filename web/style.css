@@ -33,10 +33,10 @@ html { font-family: 'rodin', system-ui, sans-serif; margin: 0; padding: 0; }
 html { color-scheme: light; background: var(--sky-edge); }
 body { margin: 0; font: 16px/1.55 var(--sans); color: var(--text); min-height: 100vh; }
 
-/* the banner's background: its sky gradient, and discL/discR spinning at half the banner's rates,
-   which look hurried at page size. Placed in svh so a phone's collapsing address bar doesn't shift them. */
-.sky { position: fixed; inset: 0; z-index: -2; background: linear-gradient(180deg, var(--sky-edge), var(--sky-mid) 50%, var(--sky-edge)); }
-.bg-wheels { position: fixed; inset: 0; z-index: -1; overflow: clip; pointer-events: none; --size: clamp(300px, 93svh, 125vw); }
+/* the banner's background: its sky gradient, and discL/discR spinning at half the banner's rates (hurried at page size).
+   Layers span lvh so they're already drawn under a sliding toolbar; the wheels sit in svh so that slide doesn't move them. */
+.sky { position: fixed; top: 0; left: 0; right: 0; height: 100lvh; z-index: -2; background: linear-gradient(180deg, var(--sky-edge), var(--sky-mid) 50%, var(--sky-edge)); }
+.bg-wheels { position: fixed; top: 0; left: 0; right: 0; height: 100lvh; z-index: -1; overflow: clip; pointer-events: none; --size: clamp(300px, 93svh, 125vw); }
 .bg-wheel { position: absolute; width: var(--size); height: var(--size); margin: calc(var(--size) / -2); opacity: var(--wheel-alpha);
   transform: rotate(var(--turn)); animation: wheel-spin linear infinite; will-change: transform; }
 .bg-wheel-l { left: .3%; top: 3.7svh; --turn: -39deg; animation-duration: 43.68s; }
