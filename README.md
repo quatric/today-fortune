@@ -77,7 +77,8 @@ is open). The evening time is shown in your locale's style, for example 5 PM or 
 It offers up to six people, today / tomorrow / any date (or "like the channel": tomorrow from 17:00), all eight
 editions (six European languages, Korean and Japanese), lucky colours, hints, group compatibility with the next very
 good day, and a zodiac wheel drawn from the day's planetary positions. The text uses the Rodin NTLG Pro font from
-`web/fonts/`; the page falls back to system fonts without it.
+`web/fonts/`; the page falls back to system fonts without it. The zodiac signs above the footer use a 12-glyph subset of
+Noto Sans Symbols (SIL Open Font License), so they always draw as text rather than emoji.
 
 The site can be self-hosted; see [`deploy/`](deploy/README.md).
 

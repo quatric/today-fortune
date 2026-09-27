@@ -17,6 +17,14 @@
   unicode-range: U+0-AF, U+B1-2017, U+201E-10FFFF;
 }
 
+/* a 12-glyph subset of Noto Sans Symbols, so the zodiac signs can't fall back to colour emoji */
+@font-face {
+  font-family: 'zodiac';
+  src: url('fonts/NotoSansSymbols-Zodiac.woff2') format('woff2');
+  font-display: block;
+  unicode-range: U+2648-2653;
+}
+
 html { font-family: 'rodin', system-ui, sans-serif; margin: 0; padding: 0; }
 :root {
   /* the banner's sky before its colour loop starts; app.js animates both through the loop */
@@ -56,7 +64,10 @@ a:hover { color: var(--link-hi); }
 .logo img { display: block; width: 100%; height: auto; filter: drop-shadow(0 6px 18px var(--logo-shadow)); }
 .lede { color: var(--muted); margin: 0 auto; max-width: 56ch; }
 
-main { max-width: 1040px; margin: 0 auto; padding: 8px 16px 40px; }
+main { max-width: 1040px; margin: 0 auto; padding: 8px 16px 0; }
+.zodiac-rule { display: flex; align-items: center; gap: 16px; margin-top: 20px; font: 16px/20px 'zodiac', var(--sans); color: var(--muted); white-space: nowrap; }
+/* the signs sit low in their line box, so the hairlines drop to meet their middle */
+.zodiac-rule::before, .zodiac-rule::after { content: ""; flex: 1; height: 1px; background: var(--line); translate: 0 2px; }
 .panel { background: var(--panel); border: 1px solid var(--panel-border); border-radius: var(--radius); backdrop-filter: blur(6px); box-shadow: var(--shadow); }
 .controls { display: grid; grid-template-columns: 1.15fr 1fr; gap: 32px; padding: var(--pad); }
 h2 { font: 400 22px/1.2 var(--serif); margin: 0 0 8px; }
