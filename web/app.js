@@ -264,13 +264,26 @@ const music = (() => {
   const btn = $("#music"), label = $(".toggle-label", btn), URL_ = new URL("assets/bgm.mp3", import.meta.url);
   let ctx, gain, source, buffer, on = false, wanted = store.get("tt-music", false);
   const show = () => { btn.setAttribute("aria-pressed", String(on)); label.textContent = on ? "Music on" : "Music off"; };
+  // bgm.mp3 is one 40-bar loop followed by its release tail and silence; folding the tail
+  // back onto the start is how the second pass sounds in the channel. Measured at 44.1 kHz.
+  const LOOP_SECONDS = 2351680 / 44100;
+  function seamless(buf) {
+    const len = Math.min(buf.length, Math.round(LOOP_SECONDS * buf.sampleRate));
+    const out = ctx.createBuffer(buf.numberOfChannels, len, buf.sampleRate);
+    for (let c = 0; c < buf.numberOfChannels; c++) {
+      const src = buf.getChannelData(c), dst = out.getChannelData(c);
+      dst.set(src.subarray(0, len));
+      for (let i = len; i < src.length; i++) dst[(i - len) % len] += src[i];
+    }
+    return out;
+  }
   async function start() {
     on = true; show(); store.set("tt-music", true);
     try {
       ctx = ctx || new (window.AudioContext || window.webkitAudioContext)();
       gain = gain || Object.assign(ctx.createGain(), {}); gain.connect(ctx.destination);
       if (ctx.state === "suspended") await ctx.resume();
-      buffer = buffer || await fetch(URL_).then((r) => r.arrayBuffer()).then((b) => ctx.decodeAudioData(b));
+      buffer = buffer || await fetch(URL_).then((r) => r.arrayBuffer()).then((b) => ctx.decodeAudioData(b)).then(seamless);
       if (!on) return;
       source = ctx.createBufferSource(); source.buffer = buffer; source.loop = true; source.connect(gain); // looping buffer: no gap
       gain.gain.cancelScheduledValues(ctx.currentTime); gain.gain.setValueAtTime(0, ctx.currentTime); gain.gain.linearRampToValueAtTime(0.35, ctx.currentTime + 1.2);

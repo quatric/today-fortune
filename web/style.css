@@ -83,7 +83,8 @@ input, select {
   border-radius: 10px; padding: 9px 11px; width: 100%; min-height: 42px;
 }
 input:invalid, .bad input { border-color: var(--rose); }
-select { text-overflow: ellipsis; }
+/* Native select arrows hug the edge whatever the padding; ours sits inset like the text. */
+select { text-overflow: ellipsis; appearance: none; background: var(--field) var(--chevron) no-repeat right 15px center / 10px 6px; padding-right: 34px; }
 .btn {
   font: inherit; font-weight: 600; cursor: pointer; color: var(--on-accent); background: var(--accent); border: 0;
   border-radius: 999px; padding: 10px 18px; min-height: 42px;
