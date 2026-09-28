@@ -1,9 +1,11 @@
+/* Rodin's ° and curly quotes are full-width (Japanese metrics), leaving a gap after "13°" or "l’"; the fallback font draws those. */
 @font-face {
   font-family: 'rodin';
   src: url('fonts/RodinNTLGPro-DB-Extended.woff2') format('woff2'),
        url('fonts/RodinNTLGPro-DB-Extended.woff') format('woff');
   font-weight: 400;
   font-display: swap;
+  unicode-range: U+0-AF, U+B1-2017, U+201E-10FFFF;
 }
 
 @font-face {
@@ -12,12 +14,21 @@
        url('fonts/RodinNTLGPro-B-Extended.woff') format('woff');
   font-weight: 700;
   font-display: swap;
+  unicode-range: U+0-AF, U+B1-2017, U+201E-10FFFF;
+}
+
+/* a 12-glyph subset of Noto Sans Symbols, so the zodiac signs can't fall back to colour emoji */
+@font-face {
+  font-family: 'zodiac';
+  src: url('fonts/NotoSansSymbols-Zodiac.woff2') format('woff2');
+  font-display: block;
+  unicode-range: U+2648-2653;
 }
 
 html { font-family: 'rodin', system-ui, sans-serif; margin: 0; padding: 0; }
 :root {
-  /* the channel's own background: a vertical gradient, blue at the ends and aqua in the middle (sampled from its title screen) */
-  --sky-top: #90b8f0; --sky-mid: #9ff1ec;
+  /* the banner's sky before its colour loop starts; app.js animates both through the loop */
+  --sky-edge: #8696f2; --sky-mid: #a0f3ec; --wheel-alpha: .59;
   --panel: rgba(255, 255, 255, .58); --panel-border: rgba(255, 255, 255, .85);
   --text: #1c2559; --muted: #4a5590; --accent: #4f62ab; --accent-hi: #5f74c4; --line: rgba(79, 98, 171, .28);
   --on-accent: #fff; --link: #34459a; --link-hi: #1c2559;
@@ -26,16 +37,23 @@ html { font-family: 'rodin', system-ui, sans-serif; margin: 0; padding: 0; }
   --shadow: 0 8px 28px rgba(28, 37, 89, .10); --logo-shadow: rgba(28, 37, 89, .25); --track: rgba(28, 37, 89, .12); --star-off: rgba(28, 37, 89, .16);
   --swatch-ring: #fff; --swatch-edge: rgba(28, 37, 89, .35); --pill0: rgba(79, 98, 171, .16); --pill1: rgba(22, 144, 127, .18); --pill1-ink: #0b6a5c;
   --gold: #f2a900; --teal: #16907f; --rose: #c2456f;
-  --radius: 16px;
+  --radius: 16px; --gap: 20px; --pad: 24px;
   --sans: 'rodin', system-ui, -apple-system, "Segoe UI", Roboto, "Hiragino Sans", "Noto Sans CJK JP", "Malgun Gothic", sans-serif;
   --serif: var(--sans);
 }
 * { box-sizing: border-box; }
-html { color-scheme: light dark; background: var(--sky-top); }
-body {
-  margin: 0; font: 16px/1.55 var(--sans); color: var(--text); min-height: 100vh;
-  background: linear-gradient(180deg, var(--sky-top), var(--sky-mid) 50%, var(--sky-top)); background-attachment: fixed;
-}
+html { color-scheme: light; background: var(--sky-edge); }
+body { margin: 0; font: 16px/1.55 var(--sans); color: var(--text); min-height: 100vh; }
+
+/* the banner's background: its sky gradient, and discL/discR spinning at half the banner's rates (hurried at page size).
+   Layers span lvh so they're already drawn under a sliding toolbar; the wheels sit in svh so that slide doesn't move them. */
+.sky { position: fixed; top: 0; left: 0; right: 0; height: 100lvh; z-index: -2; background: linear-gradient(180deg, var(--sky-edge), var(--sky-mid) 50%, var(--sky-edge)); }
+.bg-wheels { position: fixed; top: 0; left: 0; right: 0; height: 100lvh; z-index: -1; overflow: clip; pointer-events: none; --size: clamp(300px, 93svh, 125vw); }
+.bg-wheel { position: absolute; width: var(--size); height: var(--size); margin: calc(var(--size) / -2); opacity: var(--wheel-alpha);
+  transform: rotate(var(--turn)); animation: wheel-spin linear infinite; will-change: transform; }
+.bg-wheel-l { left: .3%; top: 3.7svh; --turn: -39deg; animation-duration: 43.68s; }
+.bg-wheel-r { left: 99.6%; top: 74svh; --turn: -28deg; animation-duration: 60.66s; }
+@keyframes wheel-spin { to { transform: rotate(calc(var(--turn) - 360deg)); } }
 a { color: var(--link); }
 a:hover { color: var(--link-hi); }
 .skip { position: absolute; left: -999px; } .skip:focus { left: 12px; top: 12px; z-index: 10; background: var(--accent); color: var(--on-accent); padding: 8px 12px; border-radius: 8px; }
@@ -46,27 +64,19 @@ a:hover { color: var(--link-hi); }
 .logo img { display: block; width: 100%; height: auto; filter: drop-shadow(0 6px 18px var(--logo-shadow)); }
 .lede { color: var(--muted); margin: 0 auto; max-width: 56ch; }
 
-main { max-width: 1040px; margin: 0 auto; padding: 8px 16px 40px; }
+main { max-width: 1040px; margin: 0 auto; padding: 8px 16px 0; }
+.zodiac-rule { display: flex; align-items: center; gap: 16px; margin-top: 20px; font: 16px/20px 'zodiac', var(--sans); color: var(--muted); white-space: nowrap; }
+/* the signs sit low in their line box, so the hairlines drop to meet their middle */
+.zodiac-rule::before, .zodiac-rule::after { content: ""; flex: 1; height: 1px; background: var(--line); translate: 0 2px; }
 .panel { background: var(--panel); border: 1px solid var(--panel-border); border-radius: var(--radius); backdrop-filter: blur(6px); box-shadow: var(--shadow); }
-.controls { display: grid; grid-template-columns: 1.15fr 1fr; gap: 28px; padding: 24px; }
-h2 { font: 400 22px/1.2 var(--serif); margin: 0 0 6px; }
-.controls .col > h2:not(:first-child) { margin-top: 22px; }
-.hint { color: var(--muted); font-size: 14px; margin: 4px 0 12px; }
+.controls { display: grid; grid-template-columns: 1.15fr 1fr; gap: 32px; padding: var(--pad); }
+h2 { font: 400 22px/1.2 var(--serif); margin: 0 0 8px; }
+.controls .col > h2:not(:first-child) { margin-top: 24px; }
+.controls .col > :last-child { margin-bottom: 0; }
+.hint { color: var(--muted); font-size: 14px; margin: 8px 0 12px; }
 
-.people { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 10px; }
-.person { display: grid; grid-template-columns: 1fr 1.1fr auto; gap: 4px 8px; }
-/* Android Chrome draws date inputs taller; sharing one row makes the name box and × match it. */
-.person .field { grid-row: span 2; grid-template-rows: subgrid; }
-.person .field + .field { margin-top: 0; }
-.person .icon-btn { grid-area: 2 / 3; height: auto; }
-/* Android Chrome pins its date arrow near the edge, ignoring padding; draw ours inset like the text.
-   Touch-only, and not Firefox (no such pseudo-element) or iOS (touch-callout), whose date boxes differ. */
-@media (pointer: coarse) {
-  @supports selector(::-webkit-date-and-time-value) and (not (-webkit-touch-callout: none)) {
-    input[type="date"] { appearance: none; background: var(--field) var(--chevron) no-repeat right 15px center / 10px 6px; }
-    input[type="date"]::-webkit-calendar-picker-indicator { opacity: 0; }
-  }
-}
+.people { list-style: none; margin: 0 0 16px; padding: 0; display: grid; gap: 12px; }
+.person { display: grid; grid-template-columns: 1fr 1.1fr auto; gap: 8px; align-items: end; }
 .field { display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
 input, select {
   font: inherit; color: var(--text); background: var(--field); border: 1px solid var(--line);
@@ -90,24 +100,24 @@ select { text-overflow: ellipsis; appearance: none; background: var(--field) var
 .saved { margin-top: 12px; }
 .row { display: flex; gap: 10px; flex-wrap: wrap; }
 
-.seg { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid var(--line); background: var(--surface); border-radius: 12px; overflow: hidden; margin-bottom: 10px; }
+.seg { display: grid; grid-template-columns: repeat(4, auto); border: 1px solid var(--line); background: var(--surface); border-radius: 12px; overflow: hidden; margin-bottom: 12px; }
 .seg button { font: inherit; font-size: 14px; color: var(--muted); background: transparent; border: 0; padding: 10px 6px; cursor: pointer; }
 .seg button + button { border-left: 1px solid var(--line); }
 .seg button[aria-checked="true"] { background: var(--accent); color: var(--on-accent); font-weight: 700; }
 .field + .field { margin-top: 12px; }
 
-.status { min-height: 26px; margin: 14px 4px 4px; color: var(--muted); }
+.status { min-height: 25px; margin: 20px 4px 8px; color: var(--muted); }
 .status.error { color: var(--rose); }
-#results { display: grid; gap: 18px; outline: 0; }
-.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+#results { display: grid; gap: var(--gap); outline: 0; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--gap); }
 
-.card { padding: 22px; }
-.card-head { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; margin-bottom: 14px; }
+.card { padding: var(--pad); }
+.card-head { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; margin-bottom: 20px; }
 .card-head .who { flex: 1 1 200px; min-width: 0; }
 .name { font: 400 28px/1.15 var(--serif); margin: 0; overflow-wrap: anywhere; }
-.sub { color: var(--muted); margin: 2px 0 0; }
+.sub { color: var(--muted); margin: 4px 0 0; }
 .glyph { font-size: 1.15em; color: var(--accent); }
-.chip-colour { display: inline-flex; align-items: center; gap: 8px; margin-top: 10px; padding: 5px 12px 5px 6px; border: 1px solid var(--line); border-radius: 999px; font-size: 14px; background: var(--surface); }
+.chip-colour { display: inline-flex; align-items: center; gap: 8px; margin-top: 12px; padding: 5px 12px 5px 6px; border: 1px solid var(--line); border-radius: 999px; font-size: 14px; background: var(--surface); }
 .swatch { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--swatch-ring); box-shadow: 0 0 0 1px var(--swatch-edge); flex: none; }
 
 .ring { width: 118px; height: 118px; flex: none; }
@@ -116,8 +126,8 @@ select { text-overflow: ellipsis; appearance: none; background: var(--field) var
 .ring text { fill: var(--text); font-family: var(--serif); text-anchor: middle; }
 .ring .num { font-size: 34px; } .ring .of { font-size: 11px; fill: var(--muted); font-family: var(--sans); }
 
-.topics { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
-.topic { display: grid; grid-template-columns: 168px 1fr; gap: 6px 16px; padding-top: 14px; border-top: 1px solid var(--line); }
+.topics { list-style: none; margin: 0; padding: 0; display: grid; gap: 16px; }
+.topic { display: grid; grid-template-columns: 168px 1fr; gap: 8px 16px; padding-top: 16px; border-top: 1px solid var(--line); }
 .topic:first-child { border-top: 0; padding-top: 0; }
 .topic h3 { font: 600 12px/1.2 var(--sans); text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin: 0 0 4px; }
 .stars { color: var(--gold); letter-spacing: .12em; font-size: 18px; white-space: nowrap; }
@@ -126,66 +136,97 @@ select { text-overflow: ellipsis; appearance: none; background: var(--field) var
 .msg { margin: 0; }
 .msg.num { color: var(--muted); }
 
-.badge { display: inline-block; padding: 6px 16px; border-radius: 999px; font: 600 15px var(--sans); }
+.badge { display: block; width: fit-content; padding: 7px 16px; border-radius: 999px; font: 600 15px/1.5 var(--sans); }
+.badge + .hint { margin-top: 12px; }
 .badge.r0 { background: var(--pill0); }
 .badge.r1 { background: var(--pill1); color: var(--pill1-ink); }
 .badge.r2 { background: var(--accent); color: var(--on-accent); }
-.chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 14px; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; }
 .chip { padding: 6px 14px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface-2); }
-.lab { font: 600 12px var(--sans); text-transform: uppercase; letter-spacing: .12em; color: var(--muted); margin: 8px 0 0; }
+.lab { font: 600 12px/1.3 var(--sans); text-transform: uppercase; letter-spacing: .12em; color: var(--muted); margin: 20px 0 8px; }
+h2 + .lab { margin-top: 12px; }
 
 .wheel { width: 100%; max-width: 380px; margin: 0 auto; display: block; }
-.legend { list-style: none; padding: 0; margin: 12px 0 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 4px 12px; font-size: 14px; color: var(--muted); }
+.legend { list-style: none; padding: 0; margin: 16px 0 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); gap: 12px 16px; font-size: 14px; line-height: 1.35; color: var(--muted); }
+.legend li { display: grid; grid-template-columns: 24px 1fr; align-items: center; column-gap: 8px; }
+.legend .sym { grid-row: span 2; font-size: 20px; line-height: 1; text-align: center; }
 .legend b { color: var(--text); font-weight: 600; }
+.night { container-type: inline-size; }
+/* the legend goes beside the wheel when it fits, so the sky card stays about as tall as the group card */
+@container (min-width: 420px) {
+  .sky-body { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 24px; }
+  .sky-body .legend { grid-template-columns: auto; margin: 0; }
+}
 
-.about { margin-top: 26px; padding: 4px 22px; }
-.about summary { cursor: pointer; padding: 16px 0; font: 400 20px var(--serif); }
-.about-body { padding-bottom: 14px; color: var(--muted); }
-.about-body ol { padding-left: 1.2em; }
+.about { margin-top: var(--gap); padding: 0 var(--pad); }
+.about summary { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 20px 0; cursor: pointer; list-style: none; font: 400 22px/1.25 var(--serif); }
+.about summary::-webkit-details-marker { display: none; }
+.about summary::after { content: ""; flex: none; width: 36px; height: 36px; border: 1px solid var(--line); border-radius: 50%; background: var(--surface) var(--chevron) no-repeat center / 12px 8px; transition: transform .2s, border-color .2s; }
+.about summary:hover::after { border-color: var(--accent); }
+.about[open] summary { border-bottom: 1px solid var(--line); }
+.about[open] summary::after { transform: rotate(180deg); }
+.about-body { display: grid; grid-template-columns: 1.15fr 1fr; gap: 32px; padding: 20px 0 var(--pad); }
+.about-body .lab { margin: 0 0 12px; }
+.about-body p { margin: 0; } .about-body p + p { margin-top: 12px; }
+.steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; counter-reset: step; }
+.steps li { display: grid; grid-template-columns: 26px 1fr; gap: 12px; counter-increment: step; }
+.steps li::before { content: counter(step); height: 26px; border-radius: 50%; background: var(--pill0); color: var(--accent); font: 600 13px/26px var(--sans); text-align: center; }
 footer { max-width: 760px; margin: 0 auto; padding: 8px 20px 60px; color: var(--muted); font-size: 13px; text-align: center; }
 
 .skeleton { height: 220px; border-radius: var(--radius); background: linear-gradient(100deg, rgba(255,255,255,.25) 30%, rgba(255,255,255,.55) 50%, rgba(255,255,255,.25) 70%); background-size: 300% 100%; animation: shimmer 1.4s infinite linear; }
 @keyframes shimmer { to { background-position: -100% 0; } }
-.empty { text-align: center; padding: 42px 20px; color: var(--muted); }
-.empty .glyph { font-size: 44px; display: block; margin-bottom: 8px; }
+.empty { text-align: center; padding: 40px var(--pad); color: var(--muted); }
+.empty .glyph { font-size: 44px; display: block; margin-bottom: 12px; }
+.empty .btn { margin: 4px; }
 
 @media (max-width: 800px) {
-  .controls { grid-template-columns: 1fr; padding: 18px; gap: 6px; }
+  :root { --gap: 16px; --pad: 20px; }
+  .controls { grid-template-columns: 1fr; gap: 24px; }
   .grid2 { grid-template-columns: 1fr; }
   .person { grid-template-columns: 1fr 1fr auto; }
   .topic { grid-template-columns: 1fr; }
+  .topic .pts { display: inline; margin-left: 8px; }
   .seg { grid-template-columns: repeat(2, 1fr); }
   .seg button:nth-child(3) { border-left: 0; } .seg button:nth-child(n+3) { border-top: 1px solid var(--line); }
-  .card { padding: 18px; }
+  .about-body { grid-template-columns: 1fr; gap: 24px; }
 }
-@media (prefers-reduced-motion: reduce) { .ring .value { transition: none; } .skeleton { animation: none; } }
+/* On phones only the name fits beside the ring; the sign line and colour chip take the full width. */
+@media (max-width: 480px) {
+  .card-head { display: grid; grid-template-columns: auto 1fr; gap: 12px 16px; }
+  .card-head .who { display: contents; }
+  .card-head .sub, .card-head .chip-colour { grid-column: 1 / -1; justify-self: start; margin: 0; }
+  .ring { width: 88px; height: 88px; }
+}
+@media (prefers-reduced-motion: reduce) { .ring .value, .about summary::after { transition: none; } .skeleton, .bg-wheel { animation: none; } }
 [hidden] { display: none !important; }
 
-.music { position: fixed; top: 14px; right: 14px; z-index: 5; display: inline-flex; align-items: center; gap: 8px; font: inherit; font-size: 14px;
+.toggle { position: fixed; top: 14px; z-index: 5; display: inline-flex; align-items: center; gap: 8px; font: inherit; font-size: 14px;
   color: var(--text); background: var(--surface-hi); backdrop-filter: blur(6px); border: 1px solid var(--line); border-radius: 999px; padding: 9px 14px; min-height: 42px; cursor: pointer; }
-.music:hover { border-color: var(--accent); }
+.toggle:hover { border-color: var(--accent); }
+.music { right: 14px; }
 .music[aria-pressed="true"] { color: var(--on-accent); background: var(--accent); border-color: var(--accent); }
 .music[aria-pressed="true"] .slash { display: none; }
-@media (max-width: 480px) { .music .music-label { display: none; } .music { padding: 9px 11px; } }
+.theme-toggle { left: 14px; }
+[data-theme="dark"] .theme-toggle .sun, :root:not([data-theme="dark"]) .theme-toggle .moon { display: none; }
+@media (max-width: 480px) { .toggle .toggle-label { display: none; } .toggle { padding: 9px 11px; } }
 
 /* the zodiac wheel keeps a night-sky backdrop so the planet colours stay readable */
 .night { --text: #ece9fb; --muted: #b3afd6; color: var(--text); background: linear-gradient(180deg, #232052, #14122b); border-color: rgba(255, 255, 255, .18); }
 .night .hint, .night .legend { color: var(--muted); }
 
-/* dark theme: for devices that ask for it, a dark, slightly blue version of the same layout */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --sky-top: #0e111a; --sky-mid: #2a3348;
-    --panel: rgba(150, 170, 255, .07); --panel-border: rgba(170, 190, 255, .14);
-    --text: #eceef8; --muted: #ffffff; --accent: #f4c95d; --accent-hi: #ffdb85; --line: rgba(170, 190, 255, .2);
-    --on-accent: #1a1400; --link: #f4c95d; --link-hi: #ffe08a;
-    --surface: rgba(255, 255, 255, .05); --surface-2: rgba(255, 255, 255, .07); --surface-hi: rgba(30, 36, 56, .92); --field: rgba(6, 8, 20, .4);
-    --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23eceef8' stroke-width='1.3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-    --shadow: 0 8px 28px rgba(0, 0, 0, .3); --logo-shadow: rgba(0, 0, 0, .5); --track: rgba(255, 255, 255, .12); --star-off: rgba(255, 255, 255, .2);
-    --swatch-ring: rgba(255, 255, 255, .7); --swatch-edge: rgba(0, 0, 0, .45); --pill0: rgba(255, 255, 255, .11); --pill1: rgba(95, 209, 193, .2); --pill1-ink: #aef1e6;
-    --rose: #f08fb0; --teal: #5fd1c1;
-  }
-  .btn:hover, .seg button[aria-checked="true"]:hover { background: var(--accent-hi); }
-  .skeleton { background: linear-gradient(100deg, rgba(255,255,255,.04) 30%, rgba(255,255,255,.1) 50%, rgba(255,255,255,.04) 70%); background-size: 300% 100%; }
-  .night { background: linear-gradient(180deg, #232a40, #10131e); --muted: #ffffff; }
+/* dark theme: the device's choice until the toggle saves one; a night version of the banner's sky and colours */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --sky-edge: #0e111a; --sky-mid: #2a3348; --wheel-alpha: .12;
+  --panel: rgba(150, 170, 255, .07); --panel-border: rgba(170, 190, 255, .14);
+  --text: #eceef8; --muted: #ffffff; --accent: #a3aefc; --accent-hi: #c3caff; --line: rgba(170, 190, 255, .2);
+  --on-accent: #10142c; --link: #a0f3ec; --link-hi: #d3fbf7;
+  --surface: rgba(255, 255, 255, .05); --surface-2: rgba(255, 255, 255, .07); --surface-hi: rgba(30, 36, 56, .92); --field: rgba(6, 8, 20, .4);
+  --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23eceef8' stroke-width='1.3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  --shadow: 0 8px 28px rgba(0, 0, 0, .3); --logo-shadow: rgba(0, 0, 0, .5); --track: rgba(255, 255, 255, .12); --star-off: rgba(255, 255, 255, .2);
+  --swatch-ring: rgba(255, 255, 255, .7); --swatch-edge: rgba(0, 0, 0, .45); --pill0: rgba(255, 255, 255, .11); --pill1: rgba(95, 209, 193, .2); --pill1-ink: #aef1e6;
+  --rose: #f08fb0; --teal: #5fd1c1;
 }
+[data-theme="dark"] .btn:hover, [data-theme="dark"] .seg button[aria-checked="true"]:hover { background: var(--accent-hi); }
+[data-theme="dark"] .skeleton { background: linear-gradient(100deg, rgba(255,255,255,.04) 30%, rgba(255,255,255,.1) 50%, rgba(255,255,255,.04) 70%); background-size: 300% 100%; }
+[data-theme="dark"] .night { background: linear-gradient(180deg, #232a40, #10131e); --muted: #ffffff; }

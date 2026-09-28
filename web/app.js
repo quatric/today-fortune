@@ -160,7 +160,7 @@ function groupCard(ch, people, day) {
   if (births.length >= 2) {
     const r = ch.compat(births, day), next = r === 2 ? null : ch.nextGreatDay(births, day);
     compat = `<p class="lab">Compatibility of ${births.length} people</p>
-      <p><span class="badge r${r}">${RATING[r]}</span></p>
+      <span class="badge r${r}">${RATING[r]}</span>
       ${next ? `<p class="hint">The next very good day for this group is <strong>${esc(fmtDay(next))}</strong>.</p>` : r === 2 ? "" : `<p class="hint">No very good day in the next 90 days.</p>`}`;
   }
   const chips = (list) => `<div class="chips">${list.map((w) => `<span class="chip">${esc(w)}</span>`).join("")}</div>`;
@@ -201,11 +201,11 @@ function skyCard(ch, people, day) {
     svg += `<circle cx="${x}" cy="${y}" r="9" fill="#f4c95d" stroke="#14122b" stroke-width="2"><title>${esc(p.name.trim() || `Person ${i + 1}`)}: natal Sun</title></circle>
       <text x="${x}" y="${y + 4}" text-anchor="middle" font-size="11" font-weight="700" fill="#14122b">${esc(label)}</text>`;
   });
-  const legend = PLANETS.map(([key, sym, name, colour]) => `<li><span style="color:${colour}" aria-hidden="true">${sym}</span> <b>${name}</b> ${degIn(sky[key])}° ${ZODIAC[signOf(sky[key])]}</li>`).join("");
+  const legend = PLANETS.map(([key, sym, name, colour]) => `<li><span class="sym" style="color:${colour}" aria-hidden="true">${sym}</span> <b>${name}</b> <span>${degIn(sky[key])}° ${ZODIAC[signOf(sky[key])]}</span></li>`).join("");
   return `<article class="panel card night"><h2>${esc(skyTitle(day))}</h2>
     <p class="hint">${esc(fmtDay(day))}. Positions are the channel's own table, in whole degrees; the gold dots are the natal Suns.</p>
-    <svg class="wheel" viewBox="0 0 400 400" role="img" aria-label="Zodiac wheel showing the planets on ${esc(fmtDay(day))}">${svg}</svg>
-    <ul class="legend">${legend}</ul></article>`;
+    <div class="sky-body"><svg class="wheel" viewBox="0 0 400 400" role="img" aria-label="Zodiac wheel showing the planets on ${esc(fmtDay(day))}">${svg}</svg>
+    <ul class="legend">${legend}</ul></div></article>`;
 }
 
 let token = 0, welcome = restored !== null && hadList();
@@ -220,7 +220,7 @@ async function refresh() {
   status.textContent = warn;
   if (bad) status.classList.add("error");
   if (!people.length) {
-    out.innerHTML = `<div class="panel empty"><span class="glyph" aria-hidden="true">☉\uFE0E☽\uFE0E</span>Enter a birth date, or <button class="btn ghost" id="try" type="button">try an example</button>.</div>`;
+    out.innerHTML = `<div class="panel empty"><span class="glyph" aria-hidden="true">☉\uFE0E☽\uFE0E</span>Enter a birth date, or <button class="btn ghost" id="try" type="button">try an example</button></div>`;
     $("#try").addEventListener("click", () => $("#example").click());
     return;
   }
@@ -261,7 +261,7 @@ window.addEventListener("focus", () => { const r = resolveDay(); if (r && JSON.s
 
 // --- background music (off by default; the browser only allows sound after a click) ------------------
 const music = (() => {
-  const btn = $("#music"), label = $(".music-label", btn), URL_ = new URL("assets/bgm.mp3", import.meta.url);
+  const btn = $("#music"), label = $(".toggle-label", btn), URL_ = new URL("assets/bgm.mp3", import.meta.url);
   let ctx, gain, source, buffer, on = false, wanted = store.get("tt-music", false);
   const show = () => { btn.setAttribute("aria-pressed", String(on)); label.textContent = on ? "Music on" : "Music off"; };
   // bgm.mp3 is one 40-bar loop followed by its release tail and silence; folding the tail
@@ -307,4 +307,53 @@ const music = (() => {
   }
   show();
   return { get on() { return on; } };
+})();
+
+// --- sky: the banner's background colours, its Start animation and then its Loop, in the banner's 60 fps frames ---
+const sky = (() => {
+  const el = $(".sky"), still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  // [frame, edge colour, middle colour]; the banner's keys all have zero slope, so every channel eases between them
+  const START = [[0, 0x8696f2, 0xa0f3ec], [240, 0x8696f2, 0xa0f3ec], [290, 0xffaa91, 0xfffbc5]];
+  const LOOP = [[100, 0xffaa91, 0xfffbc5], [300, 0xffa9b3, 0xffeace], [500, 0xffa9b3, 0xffeace], [700, 0xc898ff, 0xffe1ff],
+    [800, 0xc898ff, 0xffe1ff], [1100, 0x82e3a6, 0xe6ffea], [1200, 0x82e3a6, 0xe6ffea], [1450, 0xffaa91, 0xfffbc5]];
+  const LOOP_FROM = 391, LOOP_LEN = 1501;
+  const NIGHT = [[14, 17, 26], [42, 51, 72]], TINT = [.16, .12]; // how much of the banner's colour shows through the dark theme
+  const rgb = (c) => [(c >> 16) & 255, (c >> 8) & 255, c & 255];
+  function sample(keys, f) {
+    const k = keys.findIndex((key) => key[0] > f);
+    if (k <= 0) { const key = keys.at(k); return [rgb(key[1]), rgb(key[2])]; }
+    const [f0, e0, m0] = keys[k - 1], [f1, e1, m1] = keys[k], t = (f - f0) / (f1 - f0), s = t * t * (3 - 2 * t);
+    const mix = (a, b) => rgb(a).map((v, j) => v + (rgb(b)[j] - v) * s);
+    return [mix(e0, e1), mix(m0, m1)];
+  }
+  let rootAt = -Infinity;
+  function paint(frame, now) {
+    let cols = frame < LOOP_FROM ? sample(START, frame) : sample(LOOP, (frame - LOOP_FROM) % LOOP_LEN);
+    if (document.documentElement.dataset.theme === "dark") cols = cols.map((c, i) => c.map((v, j) => NIGHT[i][j] + (v - NIGHT[i][j]) * TINT[i]));
+    const [edge, mid] = cols.map((c) => `rgb(${c.map(Math.round).join(" ")})`);
+    el.style.setProperty("--sky-edge", edge); el.style.setProperty("--sky-mid", mid);
+    // Mobile browsers show the root background under a sliding toolbar or on fast scrolls, so it follows the sky;
+    // only once a second, since changing it can repaint the whole page.
+    if (now - rootAt >= 1000) { rootAt = now; document.documentElement.style.backgroundColor = edge; }
+  }
+  const t0 = performance.now(), frameAt = (now) => still ? 0 : (now - t0) * .06;
+  let last = -Infinity;
+  const tick = (now) => { if (now - last >= 50) { last = now; paint(frameAt(now), now); } requestAnimationFrame(tick); };
+  if (still) paint(0, t0); else requestAnimationFrame(tick);
+  return { repaint: () => { rootAt = -Infinity; const now = performance.now(); paint(frameAt(now), now); } };
+})();
+
+// --- theme: follows the device until the toggle saves a choice -----------------------------------------
+(() => {
+  const btn = $("#theme"), label = $(".toggle-label", btn), system = matchMedia("(prefers-color-scheme: dark)");
+  let saved = store.get("tt-theme", null);
+  function apply(t) {
+    document.documentElement.dataset.theme = t;
+    btn.setAttribute("aria-pressed", String(t === "dark")); label.textContent = t === "dark" ? "Dark" : "Light";
+    for (const m of document.querySelectorAll('meta[name="theme-color"]')) m.content = t === "dark" ? "#0e111a" : "#8696f2";
+    sky.repaint();
+  }
+  apply(saved === "dark" || saved === "light" ? saved : system.matches ? "dark" : "light");
+  system.addEventListener("change", (e) => { if (!saved) apply(e.matches ? "dark" : "light"); });
+  btn.addEventListener("click", () => { saved = document.documentElement.dataset.theme === "dark" ? "light" : "dark"; store.set("tt-theme", saved); apply(saved); });
 })();
