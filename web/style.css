@@ -76,7 +76,19 @@ h2 { font: 400 22px/1.2 var(--serif); margin: 0 0 8px; }
 .hint { color: var(--muted); font-size: 14px; margin: 8px 0 12px; }
 
 .people { list-style: none; margin: 0 0 16px; padding: 0; display: grid; gap: 12px; }
-.person { display: grid; grid-template-columns: 1fr 1.1fr auto; gap: 8px; align-items: end; }
+.person { display: grid; grid-template-columns: 1fr 1.1fr auto; gap: 4px 8px; }
+/* Android Chrome draws date inputs taller; sharing one row makes the name box and × match it. */
+.person .field { grid-row: span 2; grid-template-rows: subgrid; }
+.person .field + .field { margin-top: 0; }
+.person .icon-btn { grid-area: 2 / 3; height: auto; }
+/* Android Chrome pins its date arrow near the edge, ignoring padding; draw ours inset like the text.
+   Touch-only, and not Firefox (no such pseudo-element) or iOS (touch-callout), whose date boxes differ. */
+@media (pointer: coarse) {
+  @supports selector(::-webkit-date-and-time-value) and (not (-webkit-touch-callout: none)) {
+    input[type="date"] { appearance: none; background: var(--field) var(--chevron) no-repeat right 15px center / 10px 6px; }
+    input[type="date"]::-webkit-calendar-picker-indicator { opacity: 0; }
+  }
+}
 .field { display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
 input, select {
   font: inherit; color: var(--text); background: var(--field); border: 1px solid var(--line);
