@@ -54,6 +54,8 @@ body { margin: 0; font: 16px/1.55 var(--sans); color: var(--text); min-height: 1
 .bg-wheel-l { left: .3%; top: 3.7svh; --turn: -39deg; animation-duration: 43.68s; }
 .bg-wheel-r { left: 99.6%; top: 74svh; --turn: -28deg; animation-duration: 60.66s; }
 @keyframes wheel-spin { to { transform: rotate(calc(var(--turn) - 360deg)); } }
+/* set by app.js when the mouse is over a wheel it can grab (desktop only) */
+html.grabbable { cursor: grab; } html.spinning, html.spinning * { cursor: grabbing; user-select: none; }
 a { color: var(--link); }
 a:hover { color: var(--link-hi); }
 .skip { position: absolute; left: -999px; } .skip:focus { left: 12px; top: 12px; z-index: 10; background: var(--accent); color: var(--on-accent); padding: 8px 12px; border-radius: 8px; }
