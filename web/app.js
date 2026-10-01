@@ -357,3 +357,73 @@ const sky = (() => {
   system.addEventListener("change", (e) => { if (!saved) apply(e.matches ? "dark" : "light"); });
   btn.addEventListener("click", () => { saved = document.documentElement.dataset.theme === "dark" ? "light" : "dark"; store.set("tt-theme", saved); apply(saved); });
 })();
+
+// --- wheels: on desktop, grab a background wheel and fling it like a fidget spinner ---------------------
+(() => {
+  const html = document.documentElement, still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const desktop = matchMedia("(hover: hover) and (pointer: fine)");
+  // Only bare background starts a spin, never a card, the logo, text or a control.
+  const bare = new Set([html, document.body, $("main"), $(".hero"), $("footer"), $(".sky")]);
+  const wheels = [...document.querySelectorAll(".bg-wheel")].map((el) => ({ el, live: false, angle: 0, spin: 0, idle: 0, drag: null }));
+  const deg = (y, x) => Math.atan2(y, x) * 180 / Math.PI;
+  const draw = (w) => { w.el.style.transform = `rotate(${w.angle}deg)`; };
+
+  function hit(x, y) {
+    for (const w of wheels) {
+      const r = w.el.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+      // the outer ring sits at 245.5 of the image's 256 radius
+      if (Math.hypot(x - cx, y - cy) <= w.el.offsetWidth / 2 * .96) return { w, cx, cy };
+    }
+    return null;
+  }
+
+  // The first grab hands a wheel from its CSS animation to this loop, at the same angle and idle speed.
+  let looping = false, last = 0;
+  function take(w) {
+    if (w.live) return;
+    const m = new DOMMatrix(getComputedStyle(w.el).transform);
+    w.angle = deg(m.b, m.a);
+    w.idle = w.spin = still ? 0 : -360 / parseFloat(getComputedStyle(w.el).animationDuration);
+    w.el.style.animation = "none"; w.live = true; draw(w);
+    if (!looping) { looping = true; last = performance.now(); requestAnimationFrame(frame); }
+  }
+  function frame(now) {
+    const dt = Math.min(.05, (now - last) / 1000); last = now;
+    for (const w of wheels) {
+      if (!w.live || w.drag) continue;
+      w.spin += (w.idle - w.spin) * (1 - Math.exp(-dt / 2.5)); // friction eases a fling back to the idle turn
+      w.angle += w.spin * dt; draw(w);
+    }
+    requestAnimationFrame(frame);
+  }
+
+  addEventListener("pointerdown", (e) => {
+    if (e.pointerType === "touch" || !desktop.matches || e.button !== 0 || !bare.has(e.target)) return;
+    const h = hit(e.clientX, e.clientY);
+    if (!h) return;
+    e.preventDefault(); take(h.w);
+    h.w.drag = { cx: h.cx, cy: h.cy, at: deg(e.clientY - h.cy, e.clientX - h.cx), samples: [[e.timeStamp, h.w.angle]] };
+    e.target.setPointerCapture?.(e.pointerId);
+    html.classList.add("spinning");
+  });
+  addEventListener("pointermove", (e) => {
+    const w = wheels.find((w) => w.drag);
+    if (!w) {
+      html.classList.toggle("grabbable", e.pointerType !== "touch" && desktop.matches && bare.has(e.target) && !!hit(e.clientX, e.clientY));
+      return;
+    }
+    const d = w.drag, at = deg(e.clientY - d.cy, e.clientX - d.cx);
+    w.angle += ((at - d.at + 540) % 360) - 180; d.at = at; draw(w);
+    d.samples.push([e.timeStamp, w.angle]);
+    while (d.samples.length > 2 && e.timeStamp - d.samples[0][0] > 100) d.samples.shift();
+  });
+  function release(e) {
+    const w = wheels.find((w) => w.drag);
+    if (!w) return;
+    const s = w.drag.samples, [t0, a0] = s[0], [t1, a1] = s[s.length - 1];
+    // a wheel held still before letting go just drifts back to idle
+    w.spin = t1 > t0 && e.timeStamp - t1 < 80 ? Math.max(-2160, Math.min(2160, (a1 - a0) / (t1 - t0) * 1000)) : 0;
+    w.drag = null; html.classList.remove("spinning");
+  }
+  addEventListener("pointerup", release); addEventListener("pointercancel", release);
+})();
